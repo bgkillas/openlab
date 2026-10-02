@@ -4,13 +4,28 @@ use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::slice;
 use std::alloc::Global;
+#[derive(Default)]
 pub struct Matrix<C>
 where
     C: Complex,
 {
     entries: Option<NonNull<C>>,
+    pub dimension: MatrixDimension,
+}
+#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct MatrixDimension {
     pub width: u32,
     pub height: u32,
+}
+#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct MatrixIndex {
+    pub row: u32,
+    pub col: u32,
+}
+impl<C: Complex> Clone for Matrix<C> {
+    fn clone(&self) -> Self {
+        Self::with(self.dimension, |i, _| self.entries()[i].clone())
+    }
 }
 impl<C: Complex> Drop for Matrix<C> {
     fn drop(&mut self) {
@@ -22,25 +37,25 @@ impl<C: Complex> Drop for Matrix<C> {
         }
     }
 }
-impl<C: Complex> Default for Matrix<C> {
-    fn default() -> Self {
-        Self {
-            entries: None,
-            width: 0,
-            height: 0,
-        }
-    }
-}
 impl<C: Complex> Matrix<C> {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(dim: MatrixDimension) -> Self {
+        Self::with(dim, |_, _| C::default())
+    }
+    pub fn with<F>(dim: MatrixDimension, mut fun: F) -> Self
+    where
+        F: FnMut(usize, MatrixIndex) -> C,
+    {
         let mut ret = Self::default();
-        let layout = Layout::array::<C>(width * height).unwrap();
+        if dim.size() == 0 {
+            return ret;
+        }
+        let layout = Layout::array::<C>(dim.size()).unwrap();
         let ptr = Global.allocate(layout).unwrap();
         ret.entries = Some(ptr.cast());
-        ret.width = width.strict_cast();
-        ret.height = height.strict_cast();
-        for entry in ret.entries_uninit_mut() {
-            entry.write(C::default());
+        ret.dimension = dim;
+        for (i, entry) in ret.entries_uninit_mut().iter_mut().enumerate() {
+            let index = MatrixIndex::from(dim, i);
+            entry.write(fun(i, index));
         }
         ret
     }
@@ -66,12 +81,39 @@ impl<C: Complex> Matrix<C> {
         }
     }
     pub fn width(&self) -> usize {
-        self.width.strict_cast()
+        self.dimension.width()
     }
     pub fn height(&self) -> usize {
-        self.height.strict_cast()
+        self.dimension.height()
     }
     pub fn size(&self) -> usize {
+        self.dimension.size()
+    }
+}
+impl MatrixDimension {
+    pub fn width(self) -> usize {
+        self.width.strict_cast()
+    }
+    pub fn height(self) -> usize {
+        self.height.strict_cast()
+    }
+    pub fn size(self) -> usize {
         self.width() * self.height()
+    }
+    pub fn index(self, index: MatrixIndex) -> usize {
+        index.row() * self.width() + index.col()
+    }
+}
+impl MatrixIndex {
+    pub fn row(self) -> usize {
+        self.row.strict_cast()
+    }
+    pub fn col(self) -> usize {
+        self.col.strict_cast()
+    }
+    pub fn from(dim: MatrixDimension, index: usize) -> Self {
+        let row = (index / dim.width()).strict_cast();
+        let col = index.div_euclid(dim.width()).strict_cast();
+        Self { row, col }
     }
 }

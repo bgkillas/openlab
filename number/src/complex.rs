@@ -1,1 +1,1 @@
-pub trait Complex: Default {}
+pub trait Complex: Default + Clone {}
