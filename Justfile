@@ -5,7 +5,7 @@ run_rel:
 run_full:
     cargo run --profile release_full
 build:
-    cargo build --features "debug"
+    cargo build
 build_rel:
     cargo build --release
 build_full:
@@ -13,9 +13,9 @@ build_full:
 miri:
     cargo miri test -- --nocapture --test-threads=1
 test:
-    cd importer && cargo test -- --nocapture --test-threads=1
+    cargo test -- --nocapture --test-threads=1
 test_rel:
-    cd importer && cargo test --release -- --nocapture --test-threads=1
+    cargo test --release -- --nocapture --test-threads=1
 bench:
     cargo bench --lib --quiet -- --color always --test-threads=1 --nocapture
 clippy:

@@ -14,9 +14,6 @@ opt-level = 3
 [profile.release]
 opt-level = 3
 
-[profile.dev]
-opt-level = 1
-
 [workspace]
 resolver = "3"
 members = ["cli", "lexer", "number", "openlab", "parser"]

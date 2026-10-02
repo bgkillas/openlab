@@ -1,1 +1,2 @@
-pub trait Complex: Default + Clone {}
+use core::fmt::Debug;
+pub trait ComplexImpl: Default + Clone + Debug {}

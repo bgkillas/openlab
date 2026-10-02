@@ -1,27 +1,28 @@
-use crate::complex::Complex;
+use crate::complex::ComplexImpl;
 use crate::matrix::{Matrix, MatrixDimension};
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 #[derive(Clone)]
 pub enum Number<C>
 where
-    C: Complex,
+    C: ComplexImpl,
 {
     Complex(C),
     Matrix(Matrix<C>),
+    //List(Vec<Number<C>>)
 }
-#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum NumberDimension {
     #[default]
     Complex,
     Matrix(MatrixDimension),
 }
-#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub struct NumberIndex {
     pub index: usize,
     pub dimension: NumberDimension,
 }
-impl<C: Complex> Number<C> {
+impl<C: ComplexImpl> Number<C> {
     pub fn new(dimension: NumberDimension) -> Self {
         match dimension {
             NumberDimension::Complex => Self::Complex(C::default()),
@@ -79,26 +80,26 @@ impl<C: Complex> Number<C> {
             .map(move |(index, val)| (NumberIndex { index, dimension }, val))
     }
 }
-impl<'a, C: Complex> IntoIterator for &'a Number<C> {
+impl<'a, C: ComplexImpl> IntoIterator for &'a Number<C> {
     type Item = &'a C;
     type IntoIter = ComponentIter<'a, C>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
-impl<'a, C: Complex> IntoIterator for &'a mut Number<C> {
+impl<'a, C: ComplexImpl> IntoIterator for &'a mut Number<C> {
     type Item = &'a mut C;
     type IntoIter = ComponentIterMut<'a, C>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
     }
 }
-pub struct ComponentIter<'a, C: Complex> {
+pub struct ComponentIter<'a, C: ComplexImpl> {
     number: NonNull<Number<C>>,
     index: usize,
     phantom: PhantomData<&'a C>,
 }
-impl<'a, C: Complex> Iterator for ComponentIter<'a, C> {
+impl<'a, C: ComplexImpl> Iterator for ComponentIter<'a, C> {
     type Item = &'a C;
     fn next(&mut self) -> Option<Self::Item> {
         let ret = unsafe { self.number.as_ref() }.get(self.index);
@@ -106,12 +107,12 @@ impl<'a, C: Complex> Iterator for ComponentIter<'a, C> {
         ret
     }
 }
-pub struct ComponentIterMut<'a, C: Complex> {
+pub struct ComponentIterMut<'a, C: ComplexImpl> {
     number: NonNull<Number<C>>,
     index: usize,
     phantom: PhantomData<&'a mut C>,
 }
-impl<'a, C: Complex> Iterator for ComponentIterMut<'a, C> {
+impl<'a, C: ComplexImpl> Iterator for ComponentIterMut<'a, C> {
     type Item = &'a mut C;
     fn next(&mut self) -> Option<Self::Item> {
         let ret = unsafe { self.number.as_mut() }.get_mut(self.index);
