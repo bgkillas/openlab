@@ -85,7 +85,7 @@ impl<C: ComplexImpl> Matrix<C> {
         *self = new;
     }
     fn drop_entries(&mut self, dim: MatrixDimension) {
-        for (i, entry) in self.entries_enumerate_mut() {
+        for (i, entry) in self.iter_enumerate_mut() {
             if dim.index(i).is_some() {
                 continue;
             }
@@ -132,7 +132,7 @@ impl<C: ComplexImpl> Matrix<C> {
             &mut []
         }
     }
-    pub fn entries_enumerate_mut(&mut self) -> impl Iterator<Item = (MatrixIndex, &mut C)> {
+    pub fn iter_enumerate_mut(&mut self) -> impl Iterator<Item = (MatrixIndex, &mut C)> {
         let dim = self.dimension;
         self.entries_mut()
             .iter_mut()

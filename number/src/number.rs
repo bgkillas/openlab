@@ -9,7 +9,7 @@ where
 {
     Complex(C),
     Matrix(Matrix<C>),
-    //List(Vec<Number<C>>)
+    //List(Box<Vec<Number<C>>>)
 }
 #[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum NumberDimension {

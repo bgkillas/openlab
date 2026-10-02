@@ -1,2 +1,2 @@
-use core::fmt::Debug;
-pub trait ComplexImpl: Default + Clone + Debug {}
+use crate::base::BaseImpl;
+pub trait ComplexImpl: BaseImpl {}
