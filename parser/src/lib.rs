@@ -1,2 +1,2 @@
 pub use lexer;
-pub use numbers;
+pub use number;

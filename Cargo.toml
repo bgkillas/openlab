@@ -19,11 +19,11 @@ opt-level = 1
 
 [workspace]
 resolver = "3"
-members = ["cli", "lexer", "numbers", "openlab", "parser"]
+members = ["cli", "lexer", "number", "openlab", "parser"]
 
 [workspace.dependencies]
 lexer = {path = "lexer"}
-numbers = {path = "numbers"}
+number = {path = "number"}
 openlab = {path = "openlab"}
 parser = {path = "parser"}
 
@@ -67,7 +67,6 @@ mutex_atomic = "warn"
 needless_raw_strings = "warn"
 non_zero_suggestions = "warn"
 pathbuf_init_then_push = "warn"
-pattern_type_mismatch = "warn"
 redundant_test_prefix = "warn"
 redundant_type_annotations = "warn"
 renamed_function_params = "warn"

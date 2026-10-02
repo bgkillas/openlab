@@ -14,7 +14,7 @@ name = "lexer"
 version = "0.1.0"
 
 [[package]]
-name = "numbers"
+name = "number"
 version = "0.1.0"
 
 [[package]]
@@ -29,5 +29,5 @@ name = "parser"
 version = "0.1.0"
 dependencies = [
  "lexer",
- "numbers",
+ "number",
 ]
