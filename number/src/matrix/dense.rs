@@ -1,5 +1,6 @@
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::complex::ComplexImpl;
+use crate::traits::matrix::MatrixImpl as _;
 use core::alloc::{Allocator as _, Layout};
 use core::fmt::{Debug, Formatter};
 use core::mem::MaybeUninit;
@@ -98,14 +99,6 @@ impl<C: ComplexImpl> Matrix<C> {
             self.dimension = MatrixDimension::default();
         }
     }
-    pub fn get(&self, index: MatrixIndex) -> Option<&C> {
-        let i = self.dimension.index(index)?;
-        Some(&self.entries()[i])
-    }
-    pub fn get_mut(&mut self, index: MatrixIndex) -> Option<&mut C> {
-        let i = self.dimension.index(index)?;
-        Some(&mut self.entries_mut()[i])
-    }
     fn get_ptr(&self, index: MatrixIndex) -> Option<NonNull<C>> {
         if let Some(ptr) = self.entries {
             let i = self.dimension.index(index)?;
@@ -141,14 +134,5 @@ impl<C: ComplexImpl> Matrix<C> {
         } else {
             &mut []
         }
-    }
-    pub fn width(&self) -> usize {
-        self.dimension.width()
-    }
-    pub fn height(&self) -> usize {
-        self.dimension.height()
-    }
-    pub fn size(&self) -> usize {
-        self.dimension.size()
     }
 }

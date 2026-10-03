@@ -1,13 +1,16 @@
 use crate::matrix::dense::Matrix;
 use crate::matrix::size::MatrixDimension;
 use crate::traits::complex::ComplexImpl;
+use crate::traits::matrix::MatrixImpl as _;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
-#[derive(Clone)]
+#[derive(Clone, Default, PartialEq)]
 pub enum Number<C>
 where
     C: ComplexImpl,
 {
+    #[default]
+    Null,
     Complex(C),
     Matrix(Matrix<C>),
     //List(Box<Vec<Number<C>>>)
@@ -15,6 +18,7 @@ where
 #[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum NumberDimension {
     #[default]
+    Null,
     Complex,
     Matrix(MatrixDimension),
 }
@@ -28,12 +32,14 @@ impl<C: ComplexImpl> Number<C> {
         match dimension {
             NumberDimension::Complex => Self::Complex(C::default()),
             NumberDimension::Matrix(dim) => Self::Matrix(Matrix::new(dim)),
+            NumberDimension::Null => Self::Null,
         }
     }
     pub fn size(&self) -> NumberDimension {
         match self {
             Self::Complex(_) => NumberDimension::Complex,
             Self::Matrix(mat) => NumberDimension::Matrix(mat.dimension),
+            Self::Null => NumberDimension::Null,
         }
     }
     pub fn get_checked(&self, index: NumberIndex) -> Option<&C> {
