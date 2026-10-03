@@ -34,7 +34,7 @@ impl<C: ComplexImpl> Debug for Matrix<C> {
 }
 impl<C: ComplexImpl> Clone for Matrix<C> {
     fn clone(&self) -> Self {
-        Self::new_with(self.dimension, |i, _| self.entries()[i].clone())
+        Self::new_with(self.dimension, |i, _| self.entries()[i])
     }
 }
 impl<C: ComplexImpl> Drop for Matrix<C> {

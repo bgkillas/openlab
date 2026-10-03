@@ -5,13 +5,13 @@ pub trait BaseImpl:
     + Clone
     + Debug
     + PartialEq
-    + Add<Output = Self>
+    + Add<Self, Output = Self>
     + AddAssign<Self>
-    + Sub<Output = Self>
+    + Sub<Self, Output = Self>
     + SubAssign<Self>
-    + Mul<Output = Self>
+    + Mul<Self, Output = Self>
     + MulAssign<Self>
-    + Div<Output = Self>
+    + Div<Self, Output = Self>
     + DivAssign<Self>
     + Neg<Output = Self>
 {

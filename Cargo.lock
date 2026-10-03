@@ -16,6 +16,9 @@ version = "0.1.0"
 [[package]]
 name = "number"
 version = "0.1.0"
+dependencies = [
+ "replace_with",
+]
 
 [[package]]
 name = "openlab"
@@ -31,3 +34,9 @@ dependencies = [
  "lexer",
  "number",
 ]
+
+[[package]]
+name = "replace_with"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51743d3e274e2b18df81c4dc6caf8a5b8e15dbe799e0dca05c7617380094e884"

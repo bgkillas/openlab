@@ -23,6 +23,7 @@ lexer = {path = "lexer"}
 number = {path = "number"}
 openlab = {path = "openlab"}
 parser = {path = "parser"}
+replace_with = "0.1.8"
 
 [workspace.lints.clippy]
 pedantic = {level = "warn", priority = -1}
@@ -54,7 +55,6 @@ let_underscore_untyped = "warn"
 lossy_float_literal = "warn"
 map_err_ignore = "warn"
 map_with_unused_argument_over_ranges = "warn"
-min_ident_chars = "warn"
 mixed_read_write_in_expression = "warn"
 modulo_arithmetic = "warn"
 multiple_inherent_impl = "warn"
