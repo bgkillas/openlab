@@ -1,16 +1,17 @@
-use crate::assign_each;
 use crate::assign_impl;
-use crate::base::BaseImpl;
 use crate::float::complex::Complex;
-use crate::real::RealImpl;
+use crate::traits::assign::NegAssign;
+use crate::traits::base::BaseImpl;
+use crate::traits::real::RealImpl;
+use crate::{assign_each, assign_neg};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 use core::ops::{Deref, DerefMut};
-use replace_with::replace_with_or_abort;
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 #[repr(transparent)]
 pub struct Real<T: RealImpl = f64>(pub T);
 impl BaseImpl for f64 {}
+assign_neg!(f64);
 impl RealImpl for f64 {
     type Complex = Complex<Self>;
     fn sqrt(self) -> Self {
@@ -65,4 +66,4 @@ impl<T: RealImpl> Neg for Real<T> {
         Self(-*self)
     }
 }
-assign_each!(Real<T>, Real<T>, T: RealImpl);
+assign_each!(Real<T>, Self, T: RealImpl);

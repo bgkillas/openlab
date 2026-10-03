@@ -1,5 +1,6 @@
-use crate::complex::ComplexImpl;
-use crate::matrix::{Matrix, MatrixDimension};
+use crate::matrix::dense::Matrix;
+use crate::matrix::size::MatrixDimension;
+use crate::traits::complex::ComplexImpl;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 #[derive(Clone)]

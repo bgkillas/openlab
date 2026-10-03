@@ -1,7 +1,7 @@
-use crate::complex::ComplexImpl;
 use crate::float::complex::Complex;
 use crate::float::real::Real;
 use crate::matrix::{Matrix, MatrixDimension};
+use crate::traits::complex::ComplexImpl;
 #[test]
 pub fn matrix_allocation() {
     let dim1 = MatrixDimension::new(3, 5);

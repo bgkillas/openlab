@@ -1,5 +1,5 @@
-use crate::base::BaseImpl;
-use crate::complex::ComplexImpl;
+use crate::traits::base::BaseImpl;
+use crate::traits::complex::ComplexImpl;
 pub trait RealImpl: BaseImpl + Copy {
     type Complex: ComplexImpl;
     #[must_use]

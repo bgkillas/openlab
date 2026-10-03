@@ -1,12 +1,13 @@
 use crate::assign_each;
 use crate::assign_impl;
-use crate::base::BaseImpl;
-use crate::complex::ComplexImpl;
+use crate::assign_neg;
 use crate::float::real::Real;
-use crate::real::RealImpl;
+use crate::traits::assign::NegAssign;
+use crate::traits::base::BaseImpl;
+use crate::traits::complex::ComplexImpl;
+use crate::traits::real::RealImpl;
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
-use replace_with::replace_with_or_abort;
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 #[repr(C)]
 pub struct Complex<T: RealImpl = f64> {
@@ -74,5 +75,4 @@ impl<T: RealImpl> Div<Self> for Complex<T> {
         Self::new(ac + bd, bc - ad) / rhs.abs_squared()
     }
 }
-assign_each!(Complex<T>, Complex<T>, T: RealImpl);
-assign_each!(Complex<T>, Real<T>, T: RealImpl);
+assign_each!(Complex<T>, Self, T: RealImpl);

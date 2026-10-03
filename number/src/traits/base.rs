@@ -1,3 +1,4 @@
+use crate::traits::assign::NegAssign;
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 pub trait BaseImpl:
@@ -14,5 +15,6 @@ pub trait BaseImpl:
     + Div<Self, Output = Self>
     + DivAssign<Self>
     + Neg<Output = Self>
+    + NegAssign
 {
 }

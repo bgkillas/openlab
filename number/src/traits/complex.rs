@@ -1,5 +1,5 @@
-use crate::base::BaseImpl;
-use crate::real::RealImpl;
+use crate::traits::base::BaseImpl;
+use crate::traits::real::RealImpl;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 pub trait ComplexImpl:
     BaseImpl

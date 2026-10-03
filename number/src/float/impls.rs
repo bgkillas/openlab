@@ -1,8 +1,11 @@
-use crate::complex::ComplexImpl as _;
+use crate::assign_each;
+use crate::assign_impl;
 use crate::float::complex::Complex;
 use crate::float::real::Real;
-use crate::real::RealImpl;
+use crate::traits::complex::ComplexImpl as _;
+use crate::traits::real::RealImpl;
 use core::ops::{Add, Div, Mul, Sub};
+use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 impl<T: RealImpl> Add<Real<T>> for Complex<T> {
     type Output = Self;
     fn add(self, rhs: Real<T>) -> Self::Output {
@@ -53,3 +56,4 @@ impl<T: RealImpl> Div<Complex<T>> for Real<T> {
         Complex::new(ab, -ac) / rhs.abs_squared()
     }
 }
+assign_each!(Complex<T>, Real<T>, T: RealImpl);
