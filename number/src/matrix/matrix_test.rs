@@ -34,3 +34,18 @@ pub fn matrix_multiplication() {
     a.mul(&b);
     assert_eq!(a, c);
 }
+#[test]
+pub fn matrix_transpose() {
+    let a: Matrix<Complex<f64>> = Matrix::from([[1, 2, 3], [4, 5, 6], [7, 8, 9]]);
+    let mut b: Matrix<Complex<f64>> = Matrix::from([[1, 4, 7], [2, 5, 8], [3, 6, 9]]);
+    b.transpose();
+    assert_eq!(a, b);
+    let a: Matrix<Complex<f64>> = Matrix::from([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]);
+    let mut b: Matrix<Complex<f64>> = Matrix::from([[1, 5, 9], [2, 6, 10], [3, 7, 11], [4, 8, 12]]);
+    b.transpose();
+    assert_eq!(a, b);
+    let a: Matrix<Complex<f64>> = Matrix::from([[1, 7, 2], [2, 4, 7], [4, 3, 5], [2, 2, 2]]);
+    let mut b: Matrix<Complex<f64>> = Matrix::from([[1, 2, 4, 2], [7, 4, 3, 2], [2, 7, 5, 2]]);
+    b.transpose();
+    assert_eq!(a, b);
+}

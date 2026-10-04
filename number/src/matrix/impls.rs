@@ -4,6 +4,7 @@ use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::assign::NegAssign;
 use crate::traits::complex::ComplexImpl;
 use crate::traits::matrix::MatrixImpl;
+use core::mem;
 use core::ops::Neg;
 impl<C: ComplexImpl> MatrixImpl for Matrix<C> {
     type Entry = C;
@@ -38,10 +39,7 @@ impl<C: ComplexImpl> MatrixImpl for Matrix<C> {
         for (i, col) in rhs.cols().into_iter().enumerate() {
             vec.extend(col);
             for (j, row) in self.rows().enumerate() {
-                let index = MatrixIndex {
-                    col: i.strict_cast(),
-                    row: j.strict_cast(),
-                };
+                let index = MatrixIndex::new(j.strict_cast(), i.strict_cast());
                 let entry = row.iter().zip(vec.iter()).map(|(a, b)| *a * **b).sum();
                 new.get_uninit(index).unwrap().write(entry);
             }
@@ -50,8 +48,51 @@ impl<C: ComplexImpl> MatrixImpl for Matrix<C> {
         *self = new;
         Some(())
     }
+    fn transpose(&mut self) {
+        if self.height() == self.width() {
+            for i in 0..self.dimension.height {
+                for j in i + 1..=self.dimension.width {
+                    let from = MatrixIndex::new(j, i);
+                    let to = MatrixIndex::new(i, j);
+                    self.swap(from, to);
+                }
+            }
+        } else {
+            let transposed = self.dimension.transpose();
+            let mut is_set: Vec<bool> = vec![false; self.size()];
+            is_set[0] = true;
+            is_set[self.size() - 1] = true;
+            let mut i = 1;
+            let mut cycle_start;
+            let mut next;
+            let mut t;
+            while i < self.size() - 1 {
+                cycle_start = i;
+                t = self.entries()[i];
+                loop {
+                    next = (i * self.height()).rem_euclid(self.size() - 1);
+                    mem::swap(&mut t, &mut self.entries_mut()[next]);
+                    is_set[i] = true;
+                    i = next;
+                    if i == cycle_start {
+                        break;
+                    }
+                }
+                while is_set.get(i).is_some_and(|b| *b) {
+                    i += 1;
+                }
+            }
+            self.dimension = transposed;
+        }
+    }
     fn dimension(&self) -> MatrixDimension {
         self.dimension
+    }
+    fn swap(&mut self, from: MatrixIndex, to: MatrixIndex) -> Option<()> {
+        let i = self.dimension.index(from)?;
+        let j = self.dimension.index(to)?;
+        self.entries_mut().swap(i, j);
+        Some(())
     }
     fn get(&self, index: MatrixIndex) -> Option<&C> {
         let i = self.dimension.index(index)?;

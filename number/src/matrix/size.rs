@@ -5,8 +5,8 @@ pub struct MatrixDimension {
 }
 #[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub struct MatrixIndex {
-    pub col: u32,
     pub row: u32,
+    pub col: u32,
 }
 impl MatrixDimension {
     pub fn width(self) -> usize {
@@ -18,6 +18,10 @@ impl MatrixDimension {
     pub fn size(self) -> usize {
         self.width() * self.height()
     }
+    #[must_use]
+    pub fn transpose(self) -> Self {
+        Self::new(self.height, self.width)
+    }
     pub fn index(self, index: MatrixIndex) -> Option<usize> {
         let n = index.row() * self.width() + index.col();
         (index.col < self.width && index.row < self.height).then_some(n)
@@ -27,6 +31,9 @@ impl MatrixDimension {
     }
 }
 impl MatrixIndex {
+    pub fn new(row: u32, col: u32) -> Self {
+        Self { row, col }
+    }
     pub fn row(self) -> usize {
         self.row.strict_cast()
     }
@@ -36,6 +43,6 @@ impl MatrixIndex {
     pub fn from(dim: MatrixDimension, index: usize) -> Option<Self> {
         let row = (index / dim.width()).strict_cast();
         let col = index.rem_euclid(dim.width()).strict_cast();
-        (row < dim.height).then_some(Self { col, row })
+        (row < dim.height).then_some(Self::new(row, col))
     }
 }

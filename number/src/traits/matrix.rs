@@ -8,6 +8,7 @@ pub trait MatrixImpl: Default + Clone + Debug + PartialEq + Neg<Output = Self> +
     fn add(&mut self, rhs: &Self) -> Option<()>;
     fn sub(&mut self, rhs: &Self) -> Option<()>;
     fn mul(&mut self, rhs: &Self) -> Option<()>;
+    fn transpose(&mut self);
     fn dimension(&self) -> MatrixDimension;
     fn width(&self) -> usize {
         self.dimension().width()
@@ -18,6 +19,7 @@ pub trait MatrixImpl: Default + Clone + Debug + PartialEq + Neg<Output = Self> +
     fn size(&self) -> usize {
         self.dimension().size()
     }
+    fn swap(&mut self, from: MatrixIndex, to: MatrixIndex) -> Option<()>;
     fn get(&self, index: MatrixIndex) -> Option<&Self::Entry>;
     fn get_mut(&mut self, index: MatrixIndex) -> Option<&mut Self::Entry>;
 }

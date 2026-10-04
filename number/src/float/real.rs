@@ -2,6 +2,7 @@ use crate::assign_impl;
 use crate::float::complex::Complex;
 use crate::traits::assign::NegAssign;
 use crate::traits::base::BaseImpl;
+use crate::traits::not::NotType;
 use crate::traits::real::RealImpl;
 use crate::{assign_each, assign_neg};
 use core::iter::{Product, Sum};
@@ -16,7 +17,7 @@ impl BaseImpl for f64 {
         1.0
     }
 }
-impl<T: Into<f64>> From<T> for Real<f64> {
+impl<T: Into<f64> + NotType<Real<f64>>> From<T> for Real<f64> {
     fn from(value: T) -> Self {
         Self(<T as Into<f64>>::into(value))
     }
