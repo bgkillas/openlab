@@ -5,7 +5,9 @@ use core::fmt::Debug;
 use core::ops::Neg;
 pub trait MatrixImpl: Default + Clone + Debug + PartialEq + Neg<Output = Self> + NegAssign {
     type Entry: ComplexImpl;
-    fn add(&mut self, rhs: Self) -> Option<()>;
+    fn add(&mut self, rhs: &Self) -> Option<()>;
+    fn sub(&mut self, rhs: &Self) -> Option<()>;
+    fn mul(&mut self, rhs: &Self) -> Option<()>;
     fn dimension(&self) -> MatrixDimension;
     fn width(&self) -> usize {
         self.dimension().width()

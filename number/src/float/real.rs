@@ -4,13 +4,23 @@ use crate::traits::assign::NegAssign;
 use crate::traits::base::BaseImpl;
 use crate::traits::real::RealImpl;
 use crate::{assign_each, assign_neg};
+use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 use core::ops::{Deref, DerefMut};
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 #[repr(transparent)]
 pub struct Real<T: RealImpl = f64>(pub T);
-impl BaseImpl for f64 {}
+impl BaseImpl for f64 {
+    fn one() -> Self {
+        1.0
+    }
+}
+impl<T: Into<f64>> From<T> for Real<f64> {
+    fn from(value: T) -> Self {
+        Self(<T as Into<f64>>::into(value))
+    }
+}
 assign_neg!(f64);
 impl RealImpl for f64 {
     type Complex = Complex<Self>;
@@ -18,7 +28,11 @@ impl RealImpl for f64 {
         Self::sqrt(self)
     }
 }
-impl<T: RealImpl> BaseImpl for Real<T> {}
+impl<T: RealImpl> BaseImpl for Real<T> {
+    fn one() -> Self {
+        Self(T::one())
+    }
+}
 impl<T: RealImpl> RealImpl for Real<T> {
     type Complex = Complex<T>;
     fn sqrt(self) -> Self {
@@ -64,6 +78,22 @@ impl<T: RealImpl> Neg for Real<T> {
     type Output = Self;
     fn neg(self) -> Self::Output {
         Self(-*self)
+    }
+}
+impl<T: RealImpl> Sum for Real<T> {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        iter.fold(Self::zero(), |total, v| total + v)
+    }
+}
+impl<T: RealImpl> Product for Real<T> {
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        iter.fold(Self::one(), |total, v| total * v)
     }
 }
 assign_each!(Real<T>, Self, T: RealImpl);

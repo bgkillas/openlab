@@ -7,13 +7,47 @@ use crate::traits::matrix::MatrixImpl;
 use core::ops::Neg;
 impl<C: ComplexImpl> MatrixImpl for Matrix<C> {
     type Entry = C;
-    fn add(&mut self, rhs: Self) -> Option<()> {
+    fn add(&mut self, rhs: &Self) -> Option<()> {
         if self.dimension != rhs.dimension {
             return None;
         }
         for (a, &b) in self.entries_mut().iter_mut().zip(rhs.entries()) {
             *a += b;
         }
+        Some(())
+    }
+    fn sub(&mut self, rhs: &Self) -> Option<()> {
+        if self.dimension != rhs.dimension {
+            return None;
+        }
+        for (a, &b) in self.entries_mut().iter_mut().zip(rhs.entries()) {
+            *a -= b;
+        }
+        Some(())
+    }
+    fn mul(&mut self, rhs: &Self) -> Option<()> {
+        if self.width() != rhs.height() {
+            return None;
+        }
+        let dim = MatrixDimension {
+            width: rhs.dimension.width,
+            height: self.dimension.height,
+        };
+        let mut new = Self::new_uninit(dim);
+        let mut vec: Vec<&C> = Vec::with_capacity(rhs.height());
+        for (i, col) in rhs.cols().into_iter().enumerate() {
+            vec.extend(col);
+            for (j, row) in self.rows().enumerate() {
+                let index = MatrixIndex {
+                    col: i.strict_cast(),
+                    row: j.strict_cast(),
+                };
+                let entry = row.iter().zip(vec.iter()).map(|(a, b)| *a * **b).sum();
+                new.get_uninit(index).unwrap().write(entry);
+            }
+            vec.clear();
+        }
+        *self = new;
         Some(())
     }
     fn dimension(&self) -> MatrixDimension {

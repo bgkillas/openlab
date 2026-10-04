@@ -7,6 +7,7 @@ use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::ptr::drop_in_place;
 use core::slice;
+use itertools::{IntoChunks, Itertools as _};
 use std::alloc::Global;
 #[derive(Default)]
 pub struct Matrix<C>
@@ -43,10 +44,7 @@ impl<C: ComplexImpl> Matrix<C> {
     pub fn new(dim: MatrixDimension) -> Self {
         Self::new_with(dim, |_, _| C::default())
     }
-    pub fn new_with<F>(dim: MatrixDimension, mut fun: F) -> Self
-    where
-        F: FnMut(usize, MatrixIndex) -> C,
-    {
+    pub(crate) fn new_uninit(dim: MatrixDimension) -> Self {
         let mut ret = Self::default();
         if dim.size() == 0 {
             return ret;
@@ -55,6 +53,13 @@ impl<C: ComplexImpl> Matrix<C> {
         let ptr = Global.allocate(layout).unwrap();
         ret.entries = Some(ptr.cast());
         ret.dimension = dim;
+        ret
+    }
+    pub fn new_with<F>(dim: MatrixDimension, mut fun: F) -> Self
+    where
+        F: FnMut(usize, MatrixIndex) -> C,
+    {
+        let mut ret = Self::new_uninit(dim);
         for (i, entry) in ret.entries_uninit_mut().iter_mut().enumerate() {
             let index = MatrixIndex::from(dim, i).unwrap();
             entry.write(fun(i, index));
@@ -81,7 +86,7 @@ impl<C: ComplexImpl> Matrix<C> {
         self.drop_entries(dim);
         *self = new;
     }
-    fn drop_entries(&mut self, dim: MatrixDimension) {
+    pub(crate) fn drop_entries(&mut self, dim: MatrixDimension) {
         for (i, entry) in self.iter_enumerate_mut() {
             if dim.index(i).is_some() {
                 continue;
@@ -99,10 +104,19 @@ impl<C: ComplexImpl> Matrix<C> {
             self.dimension = MatrixDimension::default();
         }
     }
-    fn get_ptr(&self, index: MatrixIndex) -> Option<NonNull<C>> {
+    pub(crate) fn get_ptr(&self, index: MatrixIndex) -> Option<NonNull<C>> {
         if let Some(ptr) = self.entries {
             let i = self.dimension.index(index)?;
             Some(unsafe { ptr.add(i) })
+        } else {
+            None
+        }
+    }
+    pub(crate) fn get_uninit(&mut self, index: MatrixIndex) -> Option<&mut MaybeUninit<C>> {
+        if let Some(ptr) = self.entries {
+            let i = self.dimension.index(index)?;
+            let entry = unsafe { ptr.add(i) };
+            Some(unsafe { entry.cast_uninit().as_mut() })
         } else {
             None
         }
@@ -113,6 +127,15 @@ impl<C: ComplexImpl> Matrix<C> {
         } else {
             &[]
         }
+    }
+    pub fn rows(&self) -> impl Iterator<Item = &[C]> {
+        self.entries().chunks_exact(self.width())
+    }
+    pub fn cols(&self) -> IntoChunks<impl Iterator<Item = &C>> {
+        (0..self.width())
+            .flat_map(|c| (c..self.size()).step_by(self.width()))
+            .map(|i| &self.entries()[i])
+            .chunks(self.height())
     }
     pub fn entries_mut(&mut self) -> &mut [C] {
         if let Some(ptr) = self.entries {
@@ -134,5 +157,14 @@ impl<C: ComplexImpl> Matrix<C> {
         } else {
             &mut []
         }
+    }
+}
+impl<C: ComplexImpl, D: Into<C::Real>, const N: usize, const M: usize> From<[[D; N]; M]>
+    for Matrix<C>
+{
+    fn from(value: [[D; N]; M]) -> Self {
+        let dim = MatrixDimension::new(N.strict_cast(), M.strict_cast());
+        let mut vals = value.into_iter().flatten();
+        Self::new_with(dim, |_, _| C::new_real_from(vals.next().unwrap()))
     }
 }

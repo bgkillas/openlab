@@ -1,5 +1,6 @@
 #![feature(integer_casts)]
 #![feature(cast_maybe_uninit)]
+#![feature(const_trait_impl)]
 extern crate core;
 mod assign_macros;
 pub mod float;

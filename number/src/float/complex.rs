@@ -6,6 +6,7 @@ use crate::traits::assign::NegAssign;
 use crate::traits::base::BaseImpl;
 use crate::traits::complex::ComplexImpl;
 use crate::traits::real::RealImpl;
+use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -14,7 +15,14 @@ pub struct Complex<T: RealImpl = f64> {
     pub re: Real<T>,
     pub im: Real<T>,
 }
-impl<T: RealImpl> BaseImpl for Complex<T> {}
+impl<T: RealImpl> BaseImpl for Complex<T> {
+    fn one() -> Self {
+        Self {
+            re: Real::one(),
+            im: Real::zero(),
+        }
+    }
+}
 impl<T: RealImpl> ComplexImpl for Complex<T> {
     type Real = Real<T>;
     fn new(re: Real<T>, im: Real<T>) -> Self {
@@ -73,6 +81,22 @@ impl<T: RealImpl> Div<Self> for Complex<T> {
         let ad = a * d;
         let bc = b * c;
         Self::new(ac + bd, bc - ad) / rhs.abs_squared()
+    }
+}
+impl<T: RealImpl> Sum for Complex<T> {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        iter.fold(Self::zero(), |total, v| total + v)
+    }
+}
+impl<T: RealImpl> Product for Complex<T> {
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        iter.fold(Self::one(), |total, v| total * v)
     }
 }
 assign_each!(Complex<T>, Self, T: RealImpl);
