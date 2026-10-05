@@ -144,6 +144,13 @@ impl<C: ComplexImpl> Matrix<C> {
             &mut []
         }
     }
+    pub fn iter_enumerate(&self) -> impl Iterator<Item = (MatrixIndex, &C)> {
+        let dim = self.dimension;
+        self.entries()
+            .iter()
+            .enumerate()
+            .map(move |(i, val)| (MatrixIndex::from(dim, i).unwrap(), val))
+    }
     pub fn iter_enumerate_mut(&mut self) -> impl Iterator<Item = (MatrixIndex, &mut C)> {
         let dim = self.dimension;
         self.entries_mut()
