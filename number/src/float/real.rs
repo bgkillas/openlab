@@ -5,16 +5,25 @@ use crate::traits::base::BaseImpl;
 use crate::traits::not::NotType;
 use crate::traits::real::RealImpl;
 use crate::{assign_each, assign_neg};
+use core::fmt::{Debug, Formatter};
 use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 use core::ops::{Deref, DerefMut};
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Default)]
 #[repr(transparent)]
 pub struct Real<T: RealImpl = f64>(pub T);
+impl<T: RealImpl> Debug for Real<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        Debug::fmt(&self.0, f)
+    }
+}
 impl BaseImpl for f64 {
     fn one() -> Self {
         1.0
+    }
+    fn is_zero(self) -> bool {
+        self == 0.0
     }
 }
 impl<T: Into<f64> + NotType<Real<f64>>> From<T> for Real<f64> {
@@ -32,6 +41,9 @@ impl RealImpl for f64 {
 impl<T: RealImpl> BaseImpl for Real<T> {
     fn one() -> Self {
         Self(T::one())
+    }
+    fn is_zero(self) -> bool {
+        self.0.is_zero()
     }
 }
 impl<T: RealImpl> RealImpl for Real<T> {

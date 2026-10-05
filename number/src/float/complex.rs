@@ -6,14 +6,25 @@ use crate::traits::assign::NegAssign;
 use crate::traits::base::BaseImpl;
 use crate::traits::complex::ComplexImpl;
 use crate::traits::real::RealImpl;
+use core::fmt::{Debug, Formatter};
 use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Default)]
 #[repr(C)]
 pub struct Complex<T: RealImpl = f64> {
     pub re: Real<T>,
     pub im: Real<T>,
+}
+impl<T: RealImpl> Debug for Complex<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        match (self.re.is_zero(), self.im.is_zero()) {
+            (false, false) => Debug::fmt(&(self.re, self.im), f),
+            (true, false) => Debug::fmt(&self.im, f),
+            (false, true) => Debug::fmt(&self.re, f),
+            (true, true) => write!(f, "0.0"),
+        }
+    }
 }
 impl<T: RealImpl> BaseImpl for Complex<T> {
     fn one() -> Self {
@@ -21,6 +32,9 @@ impl<T: RealImpl> BaseImpl for Complex<T> {
             re: Real::one(),
             im: Real::zero(),
         }
+    }
+    fn is_zero(self) -> bool {
+        self.re.is_zero() && self.im.is_zero()
     }
 }
 impl<T: RealImpl> ComplexImpl for Complex<T> {

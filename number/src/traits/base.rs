@@ -4,6 +4,7 @@ use core::iter::{Product, Sum};
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 pub trait BaseImpl:
     Default
+    + Copy
     + Clone
     + Debug
     + PartialEq
@@ -24,4 +25,5 @@ pub trait BaseImpl:
         Self::default()
     }
     fn one() -> Self;
+    fn is_zero(self) -> bool;
 }

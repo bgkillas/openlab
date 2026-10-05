@@ -3,7 +3,6 @@ use crate::traits::real::RealImpl;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 pub trait ComplexImpl:
     BaseImpl
-    + Copy
     + Add<Self::Real, Output = Self>
     + AddAssign<Self::Real>
     + Sub<Self::Real, Output = Self>
