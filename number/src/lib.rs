@@ -8,6 +8,7 @@
 #![feature(generic_const_items)]
 #![feature(gca_macroless_args)]
 #![expect(incomplete_features)]
+extern crate alloc;
 extern crate core;
 mod assign_macros;
 pub mod float;

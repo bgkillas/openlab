@@ -1,6 +1,7 @@
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::complex::ComplexImpl;
 use crate::traits::matrix::MatrixImpl as _;
+use alloc::alloc::Global;
 use core::alloc::{Allocator as _, Layout};
 use core::fmt::{Debug, Formatter};
 use core::mem::MaybeUninit;
@@ -8,7 +9,6 @@ use core::ptr::NonNull;
 use core::ptr::drop_in_place;
 use core::slice;
 use itertools::{IntoChunks, Itertools as _};
-use std::alloc::Global;
 #[derive(Default)]
 pub struct Matrix<C>
 where

@@ -25,6 +25,7 @@ openlab = {path = "openlab"}
 parser = {path = "parser"}
 replace_with = "0.1.8"
 itertools = "0.15.0"
+unicode-segmentation = "1.13.3"
 
 [workspace.lints.clippy]
 pedantic = {level = "warn", priority = -1}
