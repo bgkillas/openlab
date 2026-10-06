@@ -29,3 +29,16 @@ pub fn num() {
         ]
     )
 }
+#[test]
+pub fn num_arbitrary() {
+    let iter = TokenIter::new("0<6>35132");
+    assert_eq!(
+        &iter.collect::<Vec<_>>(),
+        &[Token::Numeric(Some(6), 5024, None),]
+    );
+    let iter = TokenIter::new("0<36>ai08vgzz");
+    assert_eq!(
+        &iter.collect::<Vec<_>>(),
+        &[Token::Numeric(Some(36), 822838628303, None),]
+    )
+}
