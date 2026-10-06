@@ -26,7 +26,13 @@ impl<C: ComplexImpl> Debug for Matrix<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Matrix")
             .field("dimension", &self.dimension)
-            .field("entries", &self.entries())
+            .field_with("entries", |fmt| {
+                let mut list = fmt.debug_list();
+                for row in self.rows() {
+                    list.entry(&row);
+                }
+                list.finish()
+            })
             .finish()
     }
 }

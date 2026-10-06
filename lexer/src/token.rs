@@ -16,10 +16,9 @@ pub enum Token<'a> {
 }
 impl<'a> TokenIter<'a> {
     pub fn token(&mut self) -> Option<Token<'a>> {
-        let mut next;
-        (self.cursor, _) = self.until(|s| !s.trim().is_empty());
-        let (mut i, grapheme) = self.graphemes.next()?;
-        next = i + grapheme.len();
+        self.until(|s| !s.trim().is_empty());
+        let mut start = self.cursor;
+        let (_, grapheme) = self.graphemes.next()?;
         let token = match grapheme {
             "{" => Token::LeftCurlyBracket,
             "}" => Token::RightCurlyBracket,
@@ -37,6 +36,7 @@ impl<'a> TokenIter<'a> {
                     self.graphemes.next();
                     self.graphemes.next();
                     self.cursor += 2;
+                    start += 2;
                     Some(match g {
                         "x" => 16,
                         "o" => 8,
@@ -46,31 +46,37 @@ impl<'a> TokenIter<'a> {
                 } else {
                     None
                 };
-                let (end, g) = self.until(|s| {
+                let g = self.until(|s| {
                     !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
                 });
-                next = end + g.len();
-                let fraction = if g == "." {
-                    self.graphemes.next();
-                    let (end_fraction, g_fraction) = self.until(|s| {
-                        !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
-                    });
-                    next = end_fraction + g_fraction.len();
-                    Some(
-                        u128::from_str_radix(
-                            &self.source[end + 1..end_fraction],
-                            base.unwrap_or(10).strict_cast(),
-                        )
-                        .ok()?,
-                    )
-                } else {
-                    None
-                };
+                let has_deci = g == ".";
                 let whole = u128::from_str_radix(
-                    &self.source[self.cursor..end],
+                    &self.source[start..self.cursor],
                     base.unwrap_or(10).strict_cast(),
                 )
                 .ok()?;
+                let fraction = if has_deci {
+                    start = self.cursor + 1;
+                    self.graphemes.next();
+                    if self.graphemes.peek().is_some_and(|&(_, s)| {
+                        matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                    }) {
+                        self.until(|s| {
+                            !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                        });
+                        Some(
+                            u128::from_str_radix(
+                                &self.source[start..self.cursor],
+                                base.unwrap_or(10).strict_cast(),
+                            )
+                            .ok()?,
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
                 Token::Numeric(base, whole, fraction)
             }
             "\"" => {
@@ -86,30 +92,30 @@ impl<'a> TokenIter<'a> {
                         false
                     }
                 });
-                (i, _) = self.graphemes.next()?;
-                next = i + 1;
-                Token::String(&self.source[self.cursor + 1..next - 1])
+                (self.cursor, _) = self.graphemes.next()?;
+                self.cursor += 1;
+                Token::String(&self.source[start + 1..self.cursor - 1])
             }
             _ => {
-                let (end, g) = self.until(|s| s.trim().is_empty());
-                next = end + g.len();
-                Token::Word(&self.source[self.cursor..end])
+                self.until(|s| s.trim().is_empty());
+                Token::Word(&self.source[start..self.cursor])
             }
         };
-        self.cursor = next;
         Some(token)
     }
-    pub fn until<F>(&mut self, mut stop: F) -> (usize, &str)
+    pub fn until<F>(&mut self, mut stop: F) -> &str
     where
         F: FnMut(&str) -> bool,
     {
         while let Some(&(i, grapheme)) = self.graphemes.peek() {
             if stop(grapheme) {
-                return (i, grapheme);
+                self.cursor = i;
+                return grapheme;
             }
             self.graphemes.next();
         }
-        (self.source.len(), "")
+        self.cursor = self.source.len();
+        ""
     }
     pub fn new(source: &'a str) -> Self {
         Self {
