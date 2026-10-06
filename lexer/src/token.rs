@@ -10,9 +10,34 @@ pub enum Token<'a> {
     RightSquareBracket,
     LeftAngleBracket,
     RightAngleBracket,
+    ExclamationMark,
+    Caret,
+    Asterisk,
+    Minus,
+    Plus,
+    Equal,
+    SemiColon,
+    SingleQuote,
+    Backtick,
+    Tilde,
+    Comma,
+    Period,
+    FowardSlash,
     Numeric(Option<u8>, u128, Option<u128>),
     String(&'a str),
     Word(&'a str),
+}
+fn is_digit(base: u8, s: &str) -> bool {
+    if !s.is_ascii() {
+        return false;
+    }
+    let char = s.chars().next().unwrap();
+    match base {
+        2 => matches!(char, '0' | '1'),
+        8 => char.is_ascii_octdigit(),
+        16 => char.is_ascii_hexdigit(),
+        _ => unreachable!(),
+    }
 }
 impl<'a> TokenIter<'a> {
     pub fn token(&mut self) -> Option<Token<'a>> {
@@ -28,46 +53,49 @@ impl<'a> TokenIter<'a> {
             ")" => Token::RightParenthesis,
             "<" => Token::LeftAngleBracket,
             ">" => Token::RightAngleBracket,
-            "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => {
-                let base: Option<u8> = if grapheme == "0"
-                    && let Some(&(_, g)) = self.graphemes.peek()
-                    && matches!(g, "x" | "o" | "b")
-                {
-                    self.graphemes.next();
-                    self.graphemes.next();
-                    self.cursor += 2;
-                    start += 2;
-                    Some(match g {
-                        "x" => 16,
-                        "o" => 8,
-                        "b" => 2,
-                        _ => unreachable!(),
-                    })
-                } else {
-                    None
+            "!" => Token::ExclamationMark,
+            "^" => Token::Caret,
+            "*" => Token::Asterisk,
+            "-" => Token::Minus,
+            "+" => Token::Plus,
+            "=" => Token::Equal,
+            ";" => Token::SemiColon,
+            "'" => Token::SingleQuote,
+            "`" => Token::Backtick,
+            "~" => Token::Tilde,
+            "," => Token::Comma,
+            "." => Token::Period,
+            "/" => Token::FowardSlash,
+            "0" if let Some(&(_, base_str)) = self.graphemes.peek()
+                && matches!(base_str, "x" | "o" | "b") =>
+            {
+                self.graphemes.next();
+                self.cursor += 2;
+                start += 2;
+                let base: u8 = match base_str {
+                    "x" => 16,
+                    "o" => 8,
+                    "b" => 2,
+                    _ => unreachable!(),
                 };
-                let g = self.until(|s| {
-                    !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
-                });
+                let g = self.until(|s| !is_digit(base, s));
                 let has_deci = g == ".";
-                let whole = u128::from_str_radix(
-                    &self.source[start..self.cursor],
-                    base.unwrap_or(10).strict_cast(),
-                )
-                .ok()?;
+                let whole =
+                    u128::from_str_radix(&self.source[start..self.cursor], base.strict_cast())
+                        .ok()?;
                 let fraction = if has_deci {
                     start = self.cursor + 1;
                     self.graphemes.next();
-                    if self.graphemes.peek().is_some_and(|&(_, s)| {
-                        matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
-                    }) {
-                        self.until(|s| {
-                            !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
-                        });
+                    if self
+                        .graphemes
+                        .peek()
+                        .is_some_and(|&(_, s)| is_digit(base, s))
+                    {
+                        self.until(|s| !is_digit(base, s));
                         Some(
                             u128::from_str_radix(
                                 &self.source[start..self.cursor],
-                                base.unwrap_or(10).strict_cast(),
+                                base.strict_cast(),
                             )
                             .ok()?,
                         )
@@ -77,7 +105,31 @@ impl<'a> TokenIter<'a> {
                 } else {
                     None
                 };
-                Token::Numeric(base, whole, fraction)
+                Token::Numeric(Some(base), whole, fraction)
+            }
+            "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => {
+                let g = self.until(|s| {
+                    !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                });
+                let has_deci = g == ".";
+                let whole = self.source[start..self.cursor].parse().ok()?;
+                let fraction = if has_deci {
+                    start = self.cursor + 1;
+                    self.graphemes.next();
+                    if self.graphemes.peek().is_some_and(|&(_, s)| {
+                        matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                    }) {
+                        self.until(|s| {
+                            !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                        });
+                        Some(self.source[start..self.cursor].parse().ok()?)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                Token::Numeric(None, whole, fraction)
             }
             "\"" => {
                 let mut last_break = false;
