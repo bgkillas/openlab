@@ -1,8 +1,8 @@
-use crate::iter::TokenIter;
+use crate::iter::LexerTokenIter;
 use core::str::FromStr as _;
 use unicode_segmentation::UnicodeSegmentation as _;
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
-pub enum Token<'a> {
+pub enum LexerToken<'a> {
     LeftCurlyBracket,
     RightCurlyBracket,
     LeftParenthesis,
@@ -18,19 +18,21 @@ pub enum Token<'a> {
     Plus,
     Equal,
     SemiColon,
+    Colon,
     SingleQuote,
     Backtick,
     Tilde,
     Comma,
     Period,
     FowardSlash,
+    BackSlash,
     Numeric(Option<u8>, u128, Option<u128>),
     String(&'a str),
     Word(&'a str),
     UnexpectedEnd,
 }
 fn is_digit(base: u8, s: &str) -> bool {
-    if !s.is_ascii() {
+    if !s.is_ascii() || s.is_empty() {
         return false;
     }
     let char = s.chars().next().unwrap();
@@ -40,32 +42,34 @@ fn is_digit(base: u8, s: &str) -> bool {
         _ => unreachable!(),
     }
 }
-impl<'a> TokenIter<'a> {
-    pub fn token(&mut self) -> Option<Token<'a>> {
+impl<'a> LexerTokenIter<'a> {
+    pub fn token(&mut self) -> Option<LexerToken<'a>> {
         self.until(|s| !s.trim().is_empty());
         let (_, grapheme) = self.graphemes.next()?;
         let token = match grapheme {
-            "{" => Token::LeftCurlyBracket,
-            "}" => Token::RightCurlyBracket,
-            "[" => Token::LeftSquareBracket,
-            "]" => Token::RightSquareBracket,
-            "(" => Token::LeftParenthesis,
-            ")" => Token::RightParenthesis,
-            "<" => Token::LeftAngleBracket,
-            ">" => Token::RightAngleBracket,
-            "!" => Token::ExclamationMark,
-            "^" => Token::Caret,
-            "*" => Token::Asterisk,
-            "-" => Token::Minus,
-            "+" => Token::Plus,
-            "=" => Token::Equal,
-            ";" => Token::SemiColon,
-            "'" => Token::SingleQuote,
-            "`" => Token::Backtick,
-            "~" => Token::Tilde,
-            "," => Token::Comma,
-            "." => Token::Period,
-            "/" => Token::FowardSlash,
+            "{" => LexerToken::LeftCurlyBracket,
+            "}" => LexerToken::RightCurlyBracket,
+            "[" => LexerToken::LeftSquareBracket,
+            "]" => LexerToken::RightSquareBracket,
+            "(" => LexerToken::LeftParenthesis,
+            ")" => LexerToken::RightParenthesis,
+            "<" => LexerToken::LeftAngleBracket,
+            ">" => LexerToken::RightAngleBracket,
+            "!" => LexerToken::ExclamationMark,
+            "^" => LexerToken::Caret,
+            "*" => LexerToken::Asterisk,
+            "-" => LexerToken::Minus,
+            "+" => LexerToken::Plus,
+            "=" => LexerToken::Equal,
+            ";" => LexerToken::SemiColon,
+            ":" => LexerToken::Colon,
+            "'" => LexerToken::SingleQuote,
+            "`" => LexerToken::Backtick,
+            "~" => LexerToken::Tilde,
+            "," => LexerToken::Comma,
+            "." => LexerToken::Period,
+            "/" => LexerToken::FowardSlash,
+            "\\" => LexerToken::BackSlash,
             "0" if let Some(&(_, "<")) = self.graphemes.peek()
                 && let Some((base_str, _)) = self.source[self.cursor + 2..].split_once('>')
                 && !base_str.is_empty()
@@ -76,28 +80,29 @@ impl<'a> TokenIter<'a> {
                 self.graphemes.nth(base_str.len() + 1);
                 self.cursor += base_str.len() + 3;
                 self.get_num_with_arbitrary(base)
-                    .unwrap_or(Token::UnexpectedEnd)
+                    .unwrap_or(LexerToken::UnexpectedEnd)
             }
             "0" if let Some(&(_, base_str)) = self.graphemes.peek()
                 && matches!(base_str, "x" | "o" | "b") =>
             {
                 self.graphemes.next();
                 self.cursor += 2;
-                self.get_num_with(base_str).unwrap_or(Token::UnexpectedEnd)
+                self.get_num_with(base_str)
+                    .unwrap_or(LexerToken::UnexpectedEnd)
             }
             "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => {
-                self.get_num().unwrap_or(Token::UnexpectedEnd)
+                self.get_num().unwrap_or(LexerToken::UnexpectedEnd)
             }
-            "\"" => self.get_string().unwrap_or(Token::UnexpectedEnd),
+            "\"" => self.get_string().unwrap_or(LexerToken::UnexpectedEnd),
             _ => {
                 let start = self.cursor;
                 self.until(|s| s.trim().is_empty());
-                Token::Word(&self.source[start..self.cursor])
+                LexerToken::Word(&self.source[start..self.cursor])
             }
         };
         Some(token)
     }
-    pub fn get_string(&mut self) -> Option<Token<'a>> {
+    pub fn get_string(&mut self) -> Option<LexerToken<'a>> {
         let start = self.cursor;
         let mut last_break = false;
         self.until(|s| match s {
@@ -113,9 +118,9 @@ impl<'a> TokenIter<'a> {
         });
         (self.cursor, _) = self.graphemes.next()?;
         self.cursor += 1;
-        Some(Token::String(&self.source[start + 1..self.cursor - 1]))
+        Some(LexerToken::String(&self.source[start + 1..self.cursor - 1]))
     }
-    pub fn get_num(&mut self) -> Option<Token<'a>> {
+    pub fn get_num(&mut self) -> Option<LexerToken<'a>> {
         let mut start = self.cursor;
         let g =
             self.until(|s| !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"));
@@ -137,9 +142,9 @@ impl<'a> TokenIter<'a> {
         } else {
             None
         };
-        Some(Token::Numeric(None, whole, fraction))
+        Some(LexerToken::Numeric(None, whole, fraction))
     }
-    pub fn get_num_with(&mut self, base_str: &str) -> Option<Token<'a>> {
+    pub fn get_num_with(&mut self, base_str: &str) -> Option<LexerToken<'a>> {
         let base: u8 = match base_str {
             "x" => 16,
             "o" => 8,
@@ -148,7 +153,7 @@ impl<'a> TokenIter<'a> {
         };
         self.get_num_with_arbitrary(base)
     }
-    pub fn get_num_with_arbitrary(&mut self, base: u8) -> Option<Token<'a>> {
+    pub fn get_num_with_arbitrary(&mut self, base: u8) -> Option<LexerToken<'a>> {
         let mut start = self.cursor;
         let g = self.until(|s| !is_digit(base, s));
         let has_deci = g == ".";
@@ -173,7 +178,7 @@ impl<'a> TokenIter<'a> {
         } else {
             None
         };
-        Some(Token::Numeric(Some(base), whole, fraction))
+        Some(LexerToken::Numeric(Some(base), whole, fraction))
     }
     pub fn until<F>(&mut self, mut stop: F) -> &str
     where
