@@ -77,6 +77,7 @@ std_instead_of_core = "warn"
 string_add = "warn"
 string_lit_chars_any = "warn"
 tests_outside_test_module = "warn"
+use_self = "warn"
 
 needless_pass_by_value = "allow"
 missing_panics_doc = "allow"

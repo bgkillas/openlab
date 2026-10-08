@@ -27,6 +27,7 @@ pub enum LexerToken<'a> {
     FowardSlash,
     BackSlash,
     NewLine,
+    Bar,
     Numeric(Option<u8>, u128, Option<u128>),
     String(&'a str),
     Word(&'a str),
@@ -77,22 +78,23 @@ impl<'a> LexerTokenIter<'a> {
             "," => LexerToken::Comma,
             "." => LexerToken::Period,
             "/" => LexerToken::FowardSlash,
+            "|" => LexerToken::Bar,
             "\\" => LexerToken::BackSlash,
             "\n" => LexerToken::NewLine,
-            "0" if let Some(&(_, "<")) = self.graphemes.peek()
+            "0" if self.graphemes.next_if(|&(_, s)| s == "<").is_some()
                 && let Some(base_str) = get_base(&self.source[self.cursor + 2..])
                 && let Ok(base) = u8::from_str(base_str)
                 && matches!(base, 2..=36) =>
             {
-                self.graphemes.nth(base_str.len() + 1);
+                self.graphemes.nth(base_str.len());
                 self.cursor += base_str.len() + 3;
                 self.get_num_with_arbitrary(base)
                     .unwrap_or(LexerToken::UnexpectedEnd)
             }
-            "0" if let Some(&(_, base_str)) = self.graphemes.peek()
-                && matches!(base_str, "x" | "o" | "b") =>
+            "0" if let Some((_, base_str)) = self
+                .graphemes
+                .next_if(|&(_, s)| matches!(s, "x" | "o" | "b")) =>
             {
-                self.graphemes.next();
                 self.cursor += 2;
                 self.get_num_with(base_str)
                     .unwrap_or(LexerToken::UnexpectedEnd)

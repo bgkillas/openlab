@@ -4,4 +4,5 @@ pub enum Function {
     Sub,
     Mul,
     Div,
+    Pow,
 }

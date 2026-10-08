@@ -1,4 +1,5 @@
 use crate::functions::Function;
+use crate::operators::Operator;
 use core::iter::Peekable;
 use lexer::iter::LexerTokenIter;
 use lexer::token::LexerToken;
@@ -40,11 +41,11 @@ pub enum BlockToken<'a> {
     Last(Box<[Block<'a>]>),
 }
 impl<'a> Block<'a> {
-    pub fn parse(s: &'a str) -> Option<Block<'a>> {
+    pub fn parse(s: &'a str) -> Option<Self> {
         let mut tokens = LexerTokenIter::new(s).peekable();
         Self::parse_tokens(&mut tokens)
     }
-    pub fn parse_tokens(tokens: &mut Peekable<LexerTokenIter<'a>>) -> Option<Block<'a>> {
+    pub fn parse_tokens(tokens: &mut Peekable<LexerTokenIter<'a>>) -> Option<Self> {
         let mut blocks = Vec::new();
         while let Some(token) = tokens.peek() {
             let part = match token {
@@ -63,17 +64,25 @@ impl<'a> Block<'a> {
         })
     }
 }
+#[derive(Default)]
+struct State {
+    operator_stack: Vec<Operator>,
+}
 impl<'a> BlockToken<'a> {
     pub fn parse_expression(tokens: &mut Peekable<LexerTokenIter<'a>>) -> Option<Self> {
         let mut expr = Vec::new();
+        let mut state = State::default();
         let mut print = false;
         while let Some(token) = tokens.next() {
             let part = match token {
                 LexerToken::UnexpectedEnd => return None,
-                LexerToken::BackSlash if tokens.peek() == Some(&LexerToken::NewLine) => continue,
+                LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {
+                    continue;
+                }
                 LexerToken::Numeric(base, whole, part) => ExpressionToken::Number(Number::Complex(
                     NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0)),
                 )),
+
                 LexerToken::SemiColon => {
                     print = true;
                     continue;

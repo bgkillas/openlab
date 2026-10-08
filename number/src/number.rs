@@ -127,8 +127,8 @@ impl<C: ComplexImpl> Number<C> {
     }
     pub fn iter(&self) -> impl Iterator<Item = (NumberIndexChecked, &C)> {
         match self {
-            Number::Complex(c) => NumberIter::A(iter::once((NumberIndexChecked::complex(), c))),
-            Number::Matrix(m) => NumberIter::B(
+            Self::Complex(c) => NumberIter::A(iter::once((NumberIndexChecked::complex(), c))),
+            Self::Matrix(m) => NumberIter::B(
                 m.iter()
                     .map(|(i, c)| (NumberIndexChecked::matrix(m.dimension, i), c)),
             ),
@@ -136,8 +136,8 @@ impl<C: ComplexImpl> Number<C> {
     }
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (NumberIndexChecked, &mut C)> {
         match self {
-            Number::Complex(c) => NumberIter::A(iter::once((NumberIndexChecked::complex(), c))),
-            Number::Matrix(m) => {
+            Self::Complex(c) => NumberIter::A(iter::once((NumberIndexChecked::complex(), c))),
+            Self::Matrix(m) => {
                 let dim = m.dimension;
                 NumberIter::B(
                     m.iter_mut()
