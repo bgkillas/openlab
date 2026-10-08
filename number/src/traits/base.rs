@@ -26,4 +26,5 @@ pub trait BaseImpl:
     }
     fn one() -> Self;
     fn is_zero(self) -> bool;
+    fn parse_number(base: u8, whole: u128, part: u128) -> Self;
 }

@@ -36,6 +36,9 @@ impl<T: RealImpl> BaseImpl for Complex<T> {
     fn is_zero(self) -> bool {
         self.re.is_zero() && self.im.is_zero()
     }
+    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
+        Self::new_real(Real::<T>::parse_number(base, whole, part))
+    }
 }
 impl<T: RealImpl> ComplexImpl for Complex<T> {
     type Real = Real<T>;

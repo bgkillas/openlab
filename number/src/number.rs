@@ -3,7 +3,7 @@ use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::complex::ComplexImpl;
 use crate::traits::matrix::MatrixImpl as _;
 use core::iter;
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Number<C>
 where
     C: ComplexImpl,

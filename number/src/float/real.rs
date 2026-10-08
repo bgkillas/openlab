@@ -25,6 +25,13 @@ impl BaseImpl for f64 {
     fn is_zero(self) -> bool {
         self == 0.0
     }
+    #[expect(clippy::cast_precision_loss)]
+    #[expect(clippy::as_conversions)]
+    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
+        whole as f64
+            + part as f64
+                / f64::from(base).powi(part.ilog(u128::from(base)).strict_cast::<i32>() + 1)
+    }
 }
 impl<T: Into<f64> + NotType<Real<f64>>> From<T> for Real<f64> {
     fn from(value: T) -> Self {
@@ -44,6 +51,9 @@ impl<T: RealImpl> BaseImpl for Real<T> {
     }
     fn is_zero(self) -> bool {
         self.0.is_zero()
+    }
+    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
+        Real(T::parse_number(base, whole, part))
     }
 }
 impl<T: RealImpl> RealImpl for Real<T> {
