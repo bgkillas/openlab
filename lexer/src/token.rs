@@ -26,6 +26,7 @@ pub enum LexerToken<'a> {
     Period,
     FowardSlash,
     BackSlash,
+    NewLine,
     Numeric(Option<u8>, u128, Option<u128>),
     String(&'a str),
     Word(&'a str),
@@ -41,6 +42,13 @@ fn is_digit(base: u8, s: &str) -> bool {
         11..=36 => char.is_ascii_digit() || (char >= 'a' && char <= char::from(b'a' + (base - 11))),
         _ => unreachable!(),
     }
+}
+fn get_base(s: &str) -> Option<&str> {
+    let (i, _) = s
+        .char_indices()
+        .take_while(|&(_, b)| b.is_ascii_digit())
+        .last()?;
+    (s.get(i + 1..=i + 1) == Some(">")).then_some(&s[..=i])
 }
 impl<'a> LexerTokenIter<'a> {
     pub fn token(&mut self) -> Option<LexerToken<'a>> {
@@ -70,10 +78,9 @@ impl<'a> LexerTokenIter<'a> {
             "." => LexerToken::Period,
             "/" => LexerToken::FowardSlash,
             "\\" => LexerToken::BackSlash,
+            "\n" => LexerToken::NewLine,
             "0" if let Some(&(_, "<")) = self.graphemes.peek()
-                && let Some((base_str, _)) = self.source[self.cursor + 2..].split_once('>')
-                && !base_str.is_empty()
-                && base_str.bytes().all(|b| b.is_ascii_digit())
+                && let Some(base_str) = get_base(&self.source[self.cursor + 2..])
                 && let Ok(base) = u8::from_str(base_str)
                 && matches!(base, 2..=36) =>
             {
