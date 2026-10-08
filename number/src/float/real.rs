@@ -28,9 +28,12 @@ impl BaseImpl for f64 {
     #[expect(clippy::cast_precision_loss)]
     #[expect(clippy::as_conversions)]
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {
-        whole as f64
-            + part as f64
-                / f64::from(base).powi(part.ilog(u128::from(base)).strict_cast::<i32>() + 1)
+        let mut num = whole as f64;
+        if part != 0 {
+            let exp = part.ilog(u128::from(base)).strict_cast::<i32>() + 1;
+            num += part as f64 / f64::from(base).powi(exp);
+        }
+        num
     }
 }
 impl<T: Into<f64> + NotType<Real<f64>>> From<T> for Real<f64> {
