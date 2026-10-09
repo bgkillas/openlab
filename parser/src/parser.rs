@@ -1,6 +1,7 @@
 use crate::functions::Function;
 use crate::operators::Operator;
 use core::iter::Peekable;
+use core::str::FromStr as _;
 use lexer::iter::LexerTokenIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
@@ -66,33 +67,46 @@ impl<'a> Block<'a> {
 }
 #[derive(Default)]
 struct State {
+    expression: Vec<ExpressionToken>,
     operator_stack: Vec<Operator>,
+}
+impl State {
+    fn push_operator(&mut self, operator: Operator) {
+        self.operator_stack.push(operator);
+        todo!()
+    }
+    fn push_number(&mut self, number: NumberInner) {
+        self.expression
+            .push(ExpressionToken::Number(Number::Complex(number)));
+    }
 }
 impl<'a> BlockToken<'a> {
     pub fn parse_expression(tokens: &mut Peekable<LexerTokenIter<'a>>) -> Option<Self> {
-        let mut expr = Vec::new();
         let mut state = State::default();
         let mut print = false;
         while let Some(token) = tokens.next() {
-            let part = match token {
+            match token {
                 LexerToken::UnexpectedEnd => return None,
-                LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {
-                    continue;
+                LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
+                LexerToken::Numeric(base, whole, part) => {
+                    let number =
+                        NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
+                    state.push_number(number);
                 }
-                LexerToken::Numeric(base, whole, part) => ExpressionToken::Number(Number::Complex(
-                    NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0)),
-                )),
-
                 LexerToken::SemiColon => {
                     print = true;
-                    continue;
+                }
+                LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
+                    state.push_operator(Operator::Function(fun));
+                }
+                t if let Ok(op) = Operator::try_from(t) => {
+                    state.push_operator(op);
                 }
                 _ => todo!(),
-            };
-            expr.push(part);
+            }
         }
         let expression = Expression {
-            tokens: expr.into_boxed_slice(),
+            tokens: state.expression.into_boxed_slice(),
         };
         Some(if print {
             Self::PrintExpression(expression)
