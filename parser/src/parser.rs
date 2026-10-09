@@ -71,15 +71,15 @@ impl<'a> Block<'a> {
 struct State {
     expression: Vec<ExpressionToken>,
     operator_stack: Vec<Operator>,
+    no_input_left: bool,
 }
 impl State {
     fn push_operator(&mut self, operator: Operator) {
-        let no_input_left = false;
         while let Some(top) = self.operator_stack.pop_if(|top| {
             !matches!(top, Operator::LeftBracket(_) | Operator::Function(_))
                 && (top.precedence() > operator.precedence()
                     || (top.precedence() == operator.precedence() && operator.left_associative()))
-                && !(no_input_left && operator == Operator::Negate && *top == Operator::Pow)
+                && !(self.no_input_left && operator == Operator::Negate && *top == Operator::Pow)
         }) {
             self.expression
                 .push(ExpressionToken::Function(Function::from(top)));
@@ -114,7 +114,7 @@ impl State {
 impl<'a> BlockToken<'a> {
     pub fn parse_expression(tokens: &mut Peekable<LexerTokenIter<'a>>) -> Option<Self> {
         let mut state = State::default();
-        let mut print = false;
+        let mut print = true;
         while let Some(token) = tokens.next() {
             match token {
                 LexerToken::UnexpectedEnd => return None,
@@ -125,12 +125,12 @@ impl<'a> BlockToken<'a> {
                     state.push_number(number);
                 }
                 LexerToken::SemiColon => {
-                    print = true;
+                    print = false;
                 }
                 LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
                     state.push_operator(Operator::Function(fun));
                 }
-                t if let Some(op) = Operator::parse(t, tokens) => {
+                t if let Some(op) = Operator::parse(state.no_input_left, t, tokens) => {
                     state.push_operator(op);
                 }
                 _ => todo!(),

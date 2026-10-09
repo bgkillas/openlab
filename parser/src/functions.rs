@@ -13,6 +13,7 @@ pub enum Function {
     Negate,
     Mod,
     Abs,
+    Identity,
 }
 impl FromStr for Function {
     type Err = ();
@@ -31,7 +32,7 @@ impl Function {
     pub fn inputs(self) -> u8 {
         match self {
             Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => 2,
-            Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate => 1,
+            Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => 1,
         }
     }
     pub fn inner_vars(self) -> u8 {
@@ -46,7 +47,8 @@ impl Function {
             | Self::SubFactorial
             | Self::Negate
             | Self::Mod
-            | Self::Abs => 0,
+            | Self::Abs
+            | Self::Identity => 0,
         }
     }
 }
@@ -54,6 +56,7 @@ impl From<Operator> for Function {
     fn from(value: Operator) -> Self {
         match value {
             Operator::Add => Self::Add,
+            Operator::Identity => Self::Identity,
             Operator::Sub => Self::Sub,
             Operator::Mul => Self::Mul,
             Operator::Div => Self::Div,
