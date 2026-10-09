@@ -3,6 +3,7 @@ use crate::float::complex::Complex;
 use crate::traits::assign::NegAssign;
 use crate::traits::base::BaseImpl;
 use crate::traits::not::NotType;
+use crate::traits::number::NumberImpl;
 use crate::traits::real::RealImpl;
 use crate::{assign_each, assign_neg};
 use core::fmt::{Debug, Formatter};
@@ -18,47 +19,52 @@ impl<T: RealImpl> Debug for Real<T> {
         Debug::fmt(&self.0, f)
     }
 }
-impl BaseImpl for f64 {
-    fn one() -> Self {
-        1.0
-    }
-    fn is_zero(self) -> bool {
-        self == 0.0
-    }
-    #[expect(clippy::cast_precision_loss)]
-    #[expect(clippy::as_conversions)]
-    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
-        let mut num = whole as Self;
-        if part != 0 {
-            let exp = part.ilog(u128::from(base)).strict_cast::<i32>() + 1;
-            num += part as Self / Self::from(base).powi(exp);
+macro_rules! define_float {
+    ($ty:ty) => {
+        impl BaseImpl for $ty {}
+        impl NumberImpl for $ty {
+            #[expect(clippy::allow_attributes)]
+            #[allow(clippy::cast_precision_loss)]
+            #[expect(clippy::as_conversions)]
+            fn parse_number(base: u8, whole: u128, part: u128) -> Self {
+                let mut num = whole as Self;
+                if part != 0 {
+                    let exp = part.ilog(u128::from(base)).strict_cast::<i32>() + 1;
+                    num += part as Self / Self::from(base).powi(exp);
+                }
+                num
+            }
+            fn add(self, rhs: Self) -> Option<Self> {
+                Some(self + rhs)
+            }
+            fn sub(self, rhs: Self) -> Option<Self> {
+                Some(self - rhs)
+            }
+            fn mul(self, rhs: Self) -> Option<Self> {
+                Some(self * rhs)
+            }
+            fn div(self, rhs: Self) -> Option<Self> {
+                Some(self / rhs)
+            }
         }
-        num
-    }
+        impl<T: Into<$ty> + NotType<Self>> From<T> for Real<$ty> {
+            fn from(value: T) -> Self {
+                Self(<T as Into<$ty>>::into(value))
+            }
+        }
+        assign_neg!($ty);
+        impl RealImpl for $ty {
+            type Complex = Complex<Self>;
+            fn sqrt(self) -> Self {
+                Self::sqrt(self)
+            }
+        }
+    };
 }
-impl<T: Into<f64> + NotType<Self>> From<T> for Real<f64> {
-    fn from(value: T) -> Self {
-        Self(<T as Into<f64>>::into(value))
-    }
-}
-assign_neg!(f64);
-impl RealImpl for f64 {
-    type Complex = Complex<Self>;
-    fn sqrt(self) -> Self {
-        Self::sqrt(self)
-    }
-}
-impl<T: RealImpl> BaseImpl for Real<T> {
-    fn one() -> Self {
-        Self(T::one())
-    }
-    fn is_zero(self) -> bool {
-        self.0.is_zero()
-    }
-    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
-        Self(T::parse_number(base, whole, part))
-    }
-}
+define_float!(f16);
+define_float!(f32);
+define_float!(f64);
+impl<T: RealImpl> BaseImpl for Real<T> {}
 impl<T: RealImpl> RealImpl for Real<T> {
     type Complex = Complex<T>;
     fn sqrt(self) -> Self {

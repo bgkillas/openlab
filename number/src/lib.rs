@@ -9,6 +9,7 @@
 #![feature(gca_macroless_args)]
 #![feature(debug_closure_helpers)]
 #![feature(option_array_transpose)]
+#![feature(f16)]
 #![expect(incomplete_features)]
 extern crate alloc;
 extern crate core;

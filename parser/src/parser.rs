@@ -5,8 +5,9 @@ use core::str::FromStr as _;
 use lexer::iter::LexerTokenIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
-use number::traits::base::BaseImpl as _;
-pub type NumberInner = Complex<f64>;
+use number::traits::number::NumberImpl as _;
+use number::units::NumberUnits;
+pub type NumberInner = NumberUnits<Complex<f64>, f16, 8>;
 pub type Number = number::number::Number<NumberInner>;
 #[derive(Clone, Default, Debug)]
 pub struct Expression {

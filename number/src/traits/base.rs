@@ -1,4 +1,5 @@
 use crate::traits::assign::NegAssign;
+use crate::traits::number::NumberImpl;
 use core::fmt::Debug;
 use core::iter::{Product, Sum};
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -8,6 +9,7 @@ pub trait BaseImpl:
     + Clone
     + Debug
     + PartialEq
+    + NumberImpl
     + Add<Self, Output = Self>
     + AddAssign<Self>
     + Sub<Self, Output = Self>
@@ -21,10 +23,4 @@ pub trait BaseImpl:
     + Sum<Self>
     + Product<Self>
 {
-    fn zero() -> Self {
-        Self::default()
-    }
-    fn one() -> Self;
-    fn is_zero(self) -> bool;
-    fn parse_number(base: u8, whole: u128, part: u128) -> Self;
 }

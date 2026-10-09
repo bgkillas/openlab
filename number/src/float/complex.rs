@@ -5,6 +5,7 @@ use crate::float::real::Real;
 use crate::traits::assign::NegAssign;
 use crate::traits::base::BaseImpl;
 use crate::traits::complex::ComplexImpl;
+use crate::traits::number::NumberImpl as _;
 use crate::traits::real::RealImpl;
 use core::fmt::{Debug, Formatter};
 use core::iter::{Product, Sum};
@@ -26,20 +27,7 @@ impl<T: RealImpl> Debug for Complex<T> {
         }
     }
 }
-impl<T: RealImpl> BaseImpl for Complex<T> {
-    fn one() -> Self {
-        Self {
-            re: Real::one(),
-            im: Real::zero(),
-        }
-    }
-    fn is_zero(self) -> bool {
-        self.re.is_zero() && self.im.is_zero()
-    }
-    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
-        Self::new_real(Real::<T>::parse_number(base, whole, part))
-    }
-}
+impl<T: RealImpl> BaseImpl for Complex<T> {}
 impl<T: RealImpl> ComplexImpl for Complex<T> {
     type Real = Real<T>;
     fn new(re: Real<T>, im: Real<T>) -> Self {

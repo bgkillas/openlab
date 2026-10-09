@@ -1,4 +1,5 @@
 use crate::traits::base::BaseImpl;
+use crate::traits::number::NumberImpl as _;
 use crate::traits::real::RealImpl;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 pub trait ComplexImpl:

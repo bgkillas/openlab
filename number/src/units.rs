@@ -28,12 +28,10 @@ impl<T: NumberImpl, U: RealImpl, const N: usize> From<T> for NumberUnits<T, U, N
         }
     }
 }
-impl<U: RealImpl, const N: usize> Units<U, N> {
-    pub fn is_zero(self) -> bool {
-        self.units.iter().all(|c| c.is_zero())
-    }
-}
 impl<U: RealImpl, const N: usize> NumberImpl for Units<U, N> {
+    fn parse_number(_: u8, _: u128, _: u128) -> Self {
+        Self::default()
+    }
     fn add(self, rhs: Self) -> Option<Self> {
         (self.units == rhs.units).then_some(self)
     }
@@ -41,21 +39,25 @@ impl<U: RealImpl, const N: usize> NumberImpl for Units<U, N> {
         (self.units == rhs.units).then_some(self)
     }
     fn mul(mut self, rhs: Self) -> Option<Self> {
-        self.units
-            .iter_mut()
-            .zip(rhs.units.iter())
-            .for_each(|(a, b)| a.add_assign(*b));
+        for (a, b) in self.units.iter_mut().zip(rhs.units.iter()) {
+            *a += *b;
+        }
         Some(self)
     }
     fn div(mut self, rhs: Self) -> Option<Self> {
-        self.units
-            .iter_mut()
-            .zip(rhs.units.iter())
-            .for_each(|(a, b)| a.sub_assign(*b));
+        for (a, b) in self.units.iter_mut().zip(rhs.units.iter()) {
+            *a -= *b;
+        }
         Some(self)
     }
 }
 impl<T: NumberImpl, U: RealImpl, const N: usize> NumberImpl for NumberUnits<T, U, N> {
+    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
+        Self {
+            number: T::parse_number(base, whole, part),
+            units: Units::parse_number(base, whole, part),
+        }
+    }
     fn add(self, rhs: Self) -> Option<Self> {
         Some(Self {
             number: self.number.add(rhs.number)?,
