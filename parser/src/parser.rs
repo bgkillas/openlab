@@ -1,5 +1,5 @@
 use crate::functions::Function;
-use crate::operators::Operator;
+use crate::operators::{Bracket, Operator};
 use core::iter::Peekable;
 use core::str::FromStr as _;
 use lexer::iter::LexerTokenIter;
@@ -33,14 +33,15 @@ pub struct Block<'a> {
 }
 #[derive(Clone, Debug)]
 pub enum BlockToken<'a> {
+    Block(Block<'a>),
     Function(&'a str, Block<'a>),
     Expression(Expression),
-    Assignment(Variable, Box<[Block<'a>]>),
-    Return(Box<[Block<'a>]>),
+    Assignment(Variable, Box<[Self]>),
+    Return(Box<[Self]>),
     PrintExpression(Expression),
-    PrintAssignment(Variable, Box<[Block<'a>]>),
-    PrintReturn(Box<[Block<'a>]>),
-    Last(Box<[Block<'a>]>),
+    PrintAssignment(Variable, Box<[Self]>),
+    PrintReturn(Box<[Self]>),
+    Last(Box<[Self]>),
 }
 impl<'a> Block<'a> {
     pub fn parse(s: &'a str) -> Option<Self> {
@@ -73,12 +74,41 @@ struct State {
 }
 impl State {
     fn push_operator(&mut self, operator: Operator) {
+        let no_input_left = false;
+        while let Some(top) = self.operator_stack.pop_if(|top| {
+            !matches!(top, Operator::LeftBracket(_) | Operator::Function(_))
+                && (top.precedence() > operator.precedence()
+                    || (top.precedence() == operator.precedence() && operator.left_associative()))
+                && !(no_input_left && operator == Operator::Negate && *top == Operator::Pow)
+        }) {
+            self.expression
+                .push(ExpressionToken::Function(Function::from(top)));
+        }
         self.operator_stack.push(operator);
-        todo!()
     }
     fn push_number(&mut self, number: NumberInner) {
         self.expression
             .push(ExpressionToken::Number(Number::Complex(number)));
+    }
+    fn end(&mut self) {
+        while let Some(operator) = self.operator_stack.pop() {
+            if let Operator::LeftBracket(bracket) = operator {
+                match bracket {
+                    Bracket::Absolute => {
+                        self.expression
+                            .push(ExpressionToken::Function(Function::Abs));
+                    }
+                    Bracket::Parenthesis => {}
+                }
+                self.close_off_bracket();
+            } else {
+                self.expression
+                    .push(ExpressionToken::Function(Function::from(operator)));
+            }
+        }
+    }
+    fn close_off_bracket(&mut self) {
+        todo!()
     }
 }
 impl<'a> BlockToken<'a> {
@@ -100,12 +130,13 @@ impl<'a> BlockToken<'a> {
                 LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
                     state.push_operator(Operator::Function(fun));
                 }
-                t if let Ok(op) = Operator::try_from(t) => {
+                t if let Some(op) = Operator::parse(t, tokens) => {
                     state.push_operator(op);
                 }
                 _ => todo!(),
             }
         }
+        state.end();
         let expression = Expression {
             tokens: state.expression.into_boxed_slice(),
         };

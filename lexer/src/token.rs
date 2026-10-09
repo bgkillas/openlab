@@ -29,6 +29,7 @@ pub enum LexerToken<'a> {
     NewLine,
     Bar,
     At,
+    Percent,
     Numeric(Option<u8>, u128, Option<u128>),
     String(&'a str),
     Word(&'a str),
@@ -81,6 +82,7 @@ impl<'a> LexerTokenIter<'a> {
             "/" => LexerToken::FowardSlash,
             "|" => LexerToken::Bar,
             "@" => LexerToken::At,
+            "%" => LexerToken::Percent,
             "\\" => LexerToken::BackSlash,
             "\n" => LexerToken::NewLine,
             "0" if self.graphemes.next_if(|&(_, s)| s == "<").is_some()

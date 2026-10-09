@@ -38,6 +38,16 @@ pub trait NumberImpl:
         *self = self.div(rhs)?;
         Some(())
     }
+    fn sum(mut iter: impl Iterator<Item = Option<Self>>) -> Option<Self> {
+        let Some(maybe_sum) = iter.next() else {
+            return Some(Self::default());
+        };
+        let mut sum = maybe_sum?;
+        for next in iter {
+            sum.add_assign(next?)?;
+        }
+        Some(sum)
+    }
 }
 impl<T: RealImpl> NumberImpl for Complex<T> {
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {

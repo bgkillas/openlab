@@ -3,7 +3,7 @@ use crate::traits::assign::NegAssign;
 use crate::traits::base::Operations;
 use crate::traits::number::NumberImpl;
 use crate::traits::real::RealImpl;
-use core::fmt::Debug;
+use core::fmt::{Debug, Formatter};
 use core::ops::Neg;
 use std::simd::{Simd, SimdElement};
 pub trait SimdTrait<const N: usize>: SimdElement + RealImpl {
@@ -18,10 +18,19 @@ impl<const N: usize> SimdTrait<N> for f32 {
 impl<const N: usize> SimdTrait<N> for f64 {
     type Simd = Simd<Self, N>;
 }
-#[derive(Copy, Clone, Debug, PartialEq, Default)]
+#[derive(Copy, Clone, PartialEq, Default)]
 pub struct NumberUnits<T: NumberImpl, U: SimdTrait<N>, const N: usize> {
     pub number: T,
     pub units: Units<U, N>,
+}
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Debug for NumberUnits<T, U, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        if self.units.is_zero() {
+            Debug::fmt(&self.number, f)
+        } else {
+            Debug::fmt(&(self.number, self.units), f)
+        }
+    }
 }
 #[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub struct Units<U: SimdTrait<N>, const N: usize> {

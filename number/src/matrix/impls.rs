@@ -40,10 +40,7 @@ impl<C: NumberImpl> MatrixImpl for Matrix<C> {
             vec.extend(col);
             for (j, row) in self.rows().enumerate() {
                 let index = MatrixIndex::new(j.strict_cast(), i.strict_cast());
-                let mut entry = C::default();
-                for (a, b) in row.iter().zip(vec.iter()) {
-                    entry.add_assign(a.mul(**b)?)?;
-                }
+                let entry = C::sum(row.iter().zip(vec.iter()).map(|(a, b)| a.mul(**b)))?;
                 new.get_uninit(index).unwrap().write(entry);
             }
             vec.clear();

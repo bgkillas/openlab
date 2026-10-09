@@ -1,3 +1,4 @@
+use crate::operators::Operator;
 use core::str::FromStr;
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum Function {
@@ -6,6 +7,12 @@ pub enum Function {
     Mul,
     Div,
     Pow,
+    Root,
+    Factorial,
+    SubFactorial,
+    Negate,
+    Mod,
+    Abs,
 }
 impl FromStr for Function {
     type Err = ();
@@ -18,5 +25,46 @@ impl FromStr for Function {
             "pow" => Self::Pow,
             _ => return Err(()),
         })
+    }
+}
+impl Function {
+    pub fn inputs(self) -> u8 {
+        match self {
+            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => 2,
+            Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate => 1,
+        }
+    }
+    pub fn inner_vars(self) -> u8 {
+        match self {
+            Self::Add
+            | Self::Sub
+            | Self::Mul
+            | Self::Div
+            | Self::Pow
+            | Self::Root
+            | Self::Factorial
+            | Self::SubFactorial
+            | Self::Negate
+            | Self::Mod
+            | Self::Abs => 0,
+        }
+    }
+}
+impl From<Operator> for Function {
+    fn from(value: Operator) -> Self {
+        match value {
+            Operator::Add => Self::Add,
+            Operator::Sub => Self::Sub,
+            Operator::Mul => Self::Mul,
+            Operator::Div => Self::Div,
+            Operator::Pow => Self::Pow,
+            Operator::Root => Self::Root,
+            Operator::Factorial => Self::Factorial,
+            Operator::SubFactorial => Self::SubFactorial,
+            Operator::Negate => Self::Negate,
+            Operator::Mod => Self::Mod,
+            Operator::Function(f) => f,
+            Operator::LeftBracket(_) => unreachable!(),
+        }
     }
 }
