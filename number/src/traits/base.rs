@@ -10,6 +10,14 @@ pub trait BaseImpl:
     + Debug
     + PartialEq
     + NumberImpl
+    + Operations
+    + NegAssign
+    + Sum<Self>
+    + Product<Self>
+{
+}
+pub trait Operations:
+    Sized
     + Add<Self, Output = Self>
     + AddAssign<Self>
     + Sub<Self, Output = Self>
@@ -19,8 +27,19 @@ pub trait BaseImpl:
     + Div<Self, Output = Self>
     + DivAssign<Self>
     + Neg<Output = Self>
-    + NegAssign
-    + Sum<Self>
-    + Product<Self>
+{
+}
+impl<
+    T: Sized
+        + Add<Self, Output = Self>
+        + AddAssign<Self>
+        + Sub<Self, Output = Self>
+        + SubAssign<Self>
+        + Mul<Self, Output = Self>
+        + MulAssign<Self>
+        + Div<Self, Output = Self>
+        + DivAssign<Self>
+        + Neg<Output = Self>,
+> Operations for T
 {
 }
