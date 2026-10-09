@@ -19,7 +19,7 @@ fn main() {
     m.transpose();
     println!("{}", tmr.elapsed().as_nanos());
     tmr = std::time::Instant::now();
-    a.mul(&m).unwrap();
+    a.mul_assign(&m).unwrap();
     println!("{}", tmr.elapsed().as_nanos());
     black_box(m);
     black_box(a);

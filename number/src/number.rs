@@ -1,18 +1,18 @@
 use crate::matrix::dense::Matrix;
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
-use crate::traits::complex::ComplexImpl;
 use crate::traits::matrix::MatrixImpl as _;
+use crate::traits::number::NumberImpl;
 use core::iter;
 #[derive(Clone, PartialEq, Debug)]
 pub enum Number<C>
 where
-    C: ComplexImpl,
+    C: NumberImpl,
 {
     Complex(C),
     Matrix(Matrix<C>),
     //List(Box<Vec<Number<C>>>)
 }
-impl<C: ComplexImpl> Default for Number<C> {
+impl<C: NumberImpl> Default for Number<C> {
     fn default() -> Self {
         Self::Complex(C::default())
     }
@@ -48,46 +48,46 @@ pub enum NumberIndex {
     Complex,
     Matrix(MatrixIndex),
 }
-impl<C: ComplexImpl> Number<C> {
-    pub fn add(&mut self, rhs: &Self) -> Option<()> {
+impl<C: NumberImpl> Number<C> {
+    pub fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.size() != rhs.size() {
             return None;
         }
         match (self, rhs) {
-            (Self::Complex(a), &Self::Complex(b)) => *a += b,
-            (Self::Matrix(a), Self::Matrix(b)) => a.add(b)?,
+            (Self::Complex(a), &Self::Complex(b)) => a.add_assign(b)?,
+            (Self::Matrix(a), Self::Matrix(b)) => a.add_assign(b)?,
             _ => unreachable!(),
         }
         Some(())
     }
-    pub fn sub(&mut self, rhs: &Self) -> Option<()> {
+    pub fn sub_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.size() != rhs.size() {
             return None;
         }
         match (self, rhs) {
-            (Self::Complex(a), &Self::Complex(b)) => *a -= b,
-            (Self::Matrix(a), Self::Matrix(b)) => a.sub(b)?,
+            (Self::Complex(a), &Self::Complex(b)) => a.sub_assign(b)?,
+            (Self::Matrix(a), Self::Matrix(b)) => a.sub_assign(b)?,
             _ => unreachable!(),
         }
         Some(())
     }
-    pub fn mul(&mut self, rhs: &Self) -> Option<()> {
+    pub fn mul_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.size() != rhs.size() {
             return None;
         }
         match (self, rhs) {
-            (Self::Complex(a), &Self::Complex(b)) => *a *= b,
-            (Self::Matrix(a), Self::Matrix(b)) => a.mul(b)?,
+            (Self::Complex(a), &Self::Complex(b)) => a.mul_assign(b)?,
+            (Self::Matrix(a), Self::Matrix(b)) => a.mul_assign(b)?,
             _ => unreachable!(),
         }
         Some(())
     }
-    pub fn div(&mut self, rhs: &Self) -> Option<()> {
+    pub fn div_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.size() != rhs.size() {
             return None;
         }
         match (self, rhs) {
-            (Self::Complex(a), &Self::Complex(b)) => *a += b,
+            (Self::Complex(a), &Self::Complex(b)) => a.div_assign(b)?,
             (Self::Matrix(_), Self::Matrix(_)) => return None,
             _ => unreachable!(),
         }

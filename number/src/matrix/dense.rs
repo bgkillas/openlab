@@ -1,6 +1,7 @@
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::complex::ComplexImpl;
 use crate::traits::matrix::MatrixImpl as _;
+use crate::traits::number::NumberImpl;
 use alloc::alloc::Global;
 use core::alloc::{Allocator as _, Layout};
 use core::fmt::{Debug, Formatter};
@@ -12,17 +13,17 @@ use itertools::{IntoChunks, Itertools as _};
 #[derive(Default)]
 pub struct Matrix<C>
 where
-    C: ComplexImpl,
+    C: NumberImpl,
 {
     pub(crate) entries: Option<NonNull<C>>,
     pub dimension: MatrixDimension,
 }
-impl<C: ComplexImpl> PartialEq for Matrix<C> {
+impl<C: NumberImpl> PartialEq for Matrix<C> {
     fn eq(&self, other: &Self) -> bool {
         self.dimension == other.dimension && self.entries() == other.entries()
     }
 }
-impl<C: ComplexImpl> Debug for Matrix<C> {
+impl<C: NumberImpl> Debug for Matrix<C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Matrix")
             .field("dimension", &self.dimension)
@@ -36,17 +37,17 @@ impl<C: ComplexImpl> Debug for Matrix<C> {
             .finish()
     }
 }
-impl<C: ComplexImpl> Clone for Matrix<C> {
+impl<C: NumberImpl> Clone for Matrix<C> {
     fn clone(&self) -> Self {
         Self::new_with(self.dimension, |i, _| self.entries()[i])
     }
 }
-impl<C: ComplexImpl> Drop for Matrix<C> {
+impl<C: NumberImpl> Drop for Matrix<C> {
     fn drop(&mut self) {
         self.drop_entries(MatrixDimension::default());
     }
 }
-impl<C: ComplexImpl> Matrix<C> {
+impl<C: NumberImpl> Matrix<C> {
     pub fn new(dim: MatrixDimension) -> Self {
         Self::new_with(dim, |_, _| C::default())
     }
@@ -192,8 +193,8 @@ impl<C: ComplexImpl> Matrix<C> {
         }
     }
 }
-impl<C: ComplexImpl, D: Into<C::Real>, const N: usize, const M: usize> From<[[D; N]; M]>
-    for Matrix<C>
+impl<C: NumberImpl + ComplexImpl, D: Into<C::Real>, const N: usize, const M: usize>
+    From<[[D; N]; M]> for Matrix<C>
 {
     fn from(value: [[D; N]; M]) -> Self {
         let dim = MatrixDimension::new(N.strict_cast(), M.strict_cast());

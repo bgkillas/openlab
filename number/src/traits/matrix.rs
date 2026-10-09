@@ -1,13 +1,13 @@
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::assign::NegAssign;
-use crate::traits::complex::ComplexImpl;
+use crate::traits::number::NumberImpl;
 use core::fmt::Debug;
 use core::ops::Neg;
 pub trait MatrixImpl: Default + Clone + Debug + PartialEq + Neg<Output = Self> + NegAssign {
-    type Entry: ComplexImpl;
-    fn add(&mut self, rhs: &Self) -> Option<()>;
-    fn sub(&mut self, rhs: &Self) -> Option<()>;
-    fn mul(&mut self, rhs: &Self) -> Option<()>;
+    type Entry: NumberImpl;
+    fn add_assign(&mut self, rhs: &Self) -> Option<()>;
+    fn sub_assign(&mut self, rhs: &Self) -> Option<()>;
+    fn mul_assign(&mut self, rhs: &Self) -> Option<()>;
     fn transpose(&mut self);
     fn dimension(&self) -> MatrixDimension;
     fn width(&self) -> usize {

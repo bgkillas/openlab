@@ -2,31 +2,31 @@ use crate::assign_neg;
 use crate::matrix::dense::Matrix;
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::assign::NegAssign;
-use crate::traits::complex::ComplexImpl;
 use crate::traits::matrix::MatrixImpl;
+use crate::traits::number::NumberImpl;
 use core::mem;
 use core::ops::Neg;
-impl<C: ComplexImpl> MatrixImpl for Matrix<C> {
+impl<C: NumberImpl> MatrixImpl for Matrix<C> {
     type Entry = C;
-    fn add(&mut self, rhs: &Self) -> Option<()> {
+    fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.dimension != rhs.dimension {
             return None;
         }
         for (a, &b) in self.entries_mut().iter_mut().zip(rhs.entries()) {
-            *a += b;
+            a.add_assign(b)?;
         }
         Some(())
     }
-    fn sub(&mut self, rhs: &Self) -> Option<()> {
+    fn sub_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.dimension != rhs.dimension {
             return None;
         }
         for (a, &b) in self.entries_mut().iter_mut().zip(rhs.entries()) {
-            *a -= b;
+            a.sub_assign(b)?;
         }
         Some(())
     }
-    fn mul(&mut self, rhs: &Self) -> Option<()> {
+    fn mul_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.width() != rhs.height() {
             return None;
         }
@@ -40,7 +40,10 @@ impl<C: ComplexImpl> MatrixImpl for Matrix<C> {
             vec.extend(col);
             for (j, row) in self.rows().enumerate() {
                 let index = MatrixIndex::new(j.strict_cast(), i.strict_cast());
-                let entry = row.iter().zip(vec.iter()).map(|(a, b)| *a * **b).sum();
+                let mut entry = C::default();
+                for (a, b) in row.iter().zip(vec.iter()) {
+                    entry.add_assign(a.mul(**b)?)?;
+                }
                 new.get_uninit(index).unwrap().write(entry);
             }
             vec.clear();
@@ -131,7 +134,7 @@ impl<C: ComplexImpl> MatrixImpl for Matrix<C> {
         Some(())
     }
 }
-impl<C: ComplexImpl> Neg for Matrix<C> {
+impl<C: NumberImpl> Neg for Matrix<C> {
     type Output = Self;
     fn neg(mut self) -> Self::Output {
         for entry in self.entries_mut() {
@@ -140,4 +143,4 @@ impl<C: ComplexImpl> Neg for Matrix<C> {
         self
     }
 }
-assign_neg!(Matrix<C>, C: ComplexImpl);
+assign_neg!(Matrix<C>, C: NumberImpl);
