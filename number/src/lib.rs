@@ -8,6 +8,7 @@
 #![feature(generic_const_items)]
 #![feature(gca_macroless_args)]
 #![feature(debug_closure_helpers)]
+#![feature(option_array_transpose)]
 #![expect(incomplete_features)]
 extern crate alloc;
 extern crate core;
@@ -16,3 +17,4 @@ pub mod float;
 pub mod matrix;
 pub mod number;
 pub mod traits;
+pub mod units;

@@ -14,7 +14,7 @@ pub struct Matrix<C>
 where
     C: ComplexImpl,
 {
-    entries: Option<NonNull<C>>,
+    pub(crate) entries: Option<NonNull<C>>,
     pub dimension: MatrixDimension,
 }
 impl<C: ComplexImpl> PartialEq for Matrix<C> {
@@ -133,6 +133,26 @@ impl<C: ComplexImpl> Matrix<C> {
         } else {
             &[]
         }
+    }
+    pub fn row(&self, n: u32) -> &[C] {
+        let u = n.strict_cast::<usize>();
+        &self.entries()[self.width() * u..self.width() * (u + 1)]
+    }
+    pub fn row_mut(&mut self, n: u32) -> &mut [C] {
+        let u = n.strict_cast::<usize>();
+        let width = self.width();
+        &mut self.entries_mut()[width * u..width * (u + 1)]
+    }
+    pub fn row_disjoint_mut<const N: usize>(&mut self, n: [u32; N]) -> Option<[&mut [C]; N]> {
+        if n.iter().duplicates().count() != 0 || self.entries.is_none() {
+            return None;
+        }
+        let u = n.map(|i| i.strict_cast::<usize>());
+        let rows = u.map(|i| {
+            let ptr = unsafe { self.entries.unwrap().add(self.width() * i) };
+            unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), self.width()) }
+        });
+        Some(rows)
     }
     pub fn rows(&self) -> impl Iterator<Item = &[C]> {
         self.entries().chunks_exact(self.width())

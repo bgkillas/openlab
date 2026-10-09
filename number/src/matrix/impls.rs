@@ -102,6 +102,34 @@ impl<C: ComplexImpl> MatrixImpl for Matrix<C> {
         let i = self.dimension.index(index)?;
         Some(&mut self.entries_mut()[i])
     }
+    fn get_disjoint_mut<const N: usize>(
+        &mut self,
+        indices: [MatrixIndex; N],
+    ) -> Option<[&mut Self::Entry; N]> {
+        let i = indices
+            .map(|index| self.dimension.index(index))
+            .transpose()?;
+        self.entries_mut().get_disjoint_mut(i).ok()
+    }
+    fn swap_row(&mut self, from: u32, to: u32) -> Option<()> {
+        if from == to {
+            return Some(());
+        }
+        let [a, b] = self.row_disjoint_mut([from, to])?;
+        a.swap_with_slice(b);
+        Some(())
+    }
+    fn swap_col(&mut self, from: u32, to: u32) -> Option<()> {
+        if from == to {
+            return Some(());
+        }
+        for r in 0..self.height() {
+            let i1 = MatrixIndex::new(r.strict_cast(), from);
+            let i2 = MatrixIndex::new(r.strict_cast(), to);
+            self.swap(i1, i2);
+        }
+        Some(())
+    }
 }
 impl<C: ComplexImpl> Neg for Matrix<C> {
     type Output = Self;

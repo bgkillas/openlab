@@ -22,4 +22,10 @@ pub trait MatrixImpl: Default + Clone + Debug + PartialEq + Neg<Output = Self> +
     fn swap(&mut self, from: MatrixIndex, to: MatrixIndex) -> Option<()>;
     fn get(&self, index: MatrixIndex) -> Option<&Self::Entry>;
     fn get_mut(&mut self, index: MatrixIndex) -> Option<&mut Self::Entry>;
+    fn get_disjoint_mut<const N: usize>(
+        &mut self,
+        indices: [MatrixIndex; N],
+    ) -> Option<[&mut Self::Entry; N]>;
+    fn swap_row(&mut self, from: u32, to: u32) -> Option<()>;
+    fn swap_col(&mut self, from: u32, to: u32) -> Option<()>;
 }
