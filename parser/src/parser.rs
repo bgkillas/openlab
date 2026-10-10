@@ -70,11 +70,19 @@ impl<'a> Block<'a> {
         })
     }
 }
-#[derive(Default)]
 struct State {
     expression: Vec<ExpressionToken>,
     operator_stack: Vec<Operator>,
     no_input_left: bool,
+}
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            expression: Vec::new(),
+            operator_stack: Vec::new(),
+            no_input_left: true,
+        }
+    }
 }
 impl State {
     fn push_operator(&mut self, operator: Operator) {
@@ -82,7 +90,9 @@ impl State {
             !matches!(top, Operator::LeftBracket(_) | Operator::Function(_))
                 && (top.precedence() > operator.precedence()
                     || (top.precedence() == operator.precedence() && operator.left_associative()))
-                && !(self.no_input_left && operator == Operator::Negate && *top == Operator::Pow)
+                && !(self.no_input_left
+                    && matches!(operator, Operator::Negate | Operator::Identity)
+                    && !top.left_associative())
         }) {
             self.expression
                 .push(ExpressionToken::Function(Function::from(top)));
@@ -123,17 +133,21 @@ impl<'a> BlockToken<'a> {
                 LexerToken::UnexpectedEnd => return None,
                 LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
                 LexerToken::Numeric(base, whole, part) => {
+                    state.no_input_left = false;
                     let number =
                         NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
                     state.push_number(number);
                 }
                 LexerToken::SemiColon => {
+                    state.no_input_left = true;
                     print = false;
                 }
                 LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
+                    state.no_input_left = true;
                     state.push_operator(Operator::Function(fun));
                 }
                 t if let Some(op) = Operator::parse(state.no_input_left, t, tokens) => {
+                    state.no_input_left = true;
                     state.push_operator(op);
                 }
                 _ => todo!(),
