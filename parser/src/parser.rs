@@ -99,8 +99,10 @@ impl State {
                 && (top.precedence() > operator.precedence()
                     || (top.precedence() == operator.precedence() && operator.left_associative()))
                 && !(self.no_input_left
-                    && matches!(operator, Operator::Negate | Operator::Identity)
-                    && !top.left_associative())
+                    && operator.is_unary()
+                    && operator.unary_left()
+                    && !top.left_associative()
+                    && top.precedence() > operator.precedence())
         }) {
             self.expression
                 .push(ExpressionToken::Function(Function::from(top)));
