@@ -1,5 +1,6 @@
 use crate::functions::Function;
 use core::iter::Peekable;
+use core::ops::Range;
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -57,10 +58,12 @@ impl Operator {
             }
         })
     }
-    pub fn inputs(self) -> u8 {
+    pub fn inputs(self) -> Range<u8> {
         match self {
-            Self::Negate | Self::Factorial | Self::SubFactorial | Self::Identity => 1,
-            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => 2,
+            Self::Negate | Self::Factorial | Self::SubFactorial | Self::Identity => 1..2,
+            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => {
+                2..3
+            }
             Self::Function(f) => f.inputs(),
             Self::LeftBracket(_) => {
                 unreachable!()

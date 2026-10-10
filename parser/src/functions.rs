@@ -1,4 +1,5 @@
 use crate::operators::Operator;
+use core::ops::Range;
 use core::str::FromStr;
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum Function {
@@ -14,6 +15,7 @@ pub enum Function {
     Mod,
     Abs,
     Identity,
+    Custom(u32),
 }
 impl FromStr for Function {
     type Err = ();
@@ -29,10 +31,15 @@ impl FromStr for Function {
     }
 }
 impl Function {
-    pub fn inputs(self) -> u8 {
+    pub fn inputs(self) -> Range<u8> {
         match self {
-            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => 2,
-            Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => 1,
+            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => {
+                2..3
+            }
+            Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => {
+                1..2
+            }
+            Self::Custom(_) => todo!(),
         }
     }
     pub fn inner_vars(self) -> u8 {
@@ -49,6 +56,7 @@ impl Function {
             | Self::Mod
             | Self::Abs
             | Self::Identity => 0,
+            Self::Custom(_) => todo!(),
         }
     }
 }

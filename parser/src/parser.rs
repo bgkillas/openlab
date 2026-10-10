@@ -46,16 +46,22 @@ pub enum BlockToken<'a> {
     PrintReturn(Box<[Self]>),
     Last(Box<[Self]>),
 }
+#[derive(Clone, Debug)]
+pub enum ParseError {
+    MissingInput,
+    TooMuchInput,
+    LexerError,
+}
 impl<'a> Block<'a> {
-    pub fn parse(s: &'a str) -> Option<Self> {
+    pub fn parse(s: &'a str) -> Result<Self, ParseError> {
         let mut tokens = LexerIter::new(s).peekable();
         Self::parse_tokens(&mut tokens)
     }
-    pub fn parse_tokens(tokens: &mut Peekable<LexerIter<'a>>) -> Option<Self> {
+    pub fn parse_tokens(tokens: &mut Peekable<LexerIter<'a>>) -> Result<Self, ParseError> {
         let mut blocks = Vec::new();
         while let Some(token) = tokens.peek() {
             let part = match token.token {
-                LexerToken::UnexpectedEnd => return None,
+                LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
                 LexerToken::Word("fn") => todo!(),
                 LexerToken::Word("let") => todo!(),
                 LexerToken::Word("mut") => todo!(),
@@ -65,7 +71,7 @@ impl<'a> Block<'a> {
             };
             blocks.push(part);
         }
-        Some(Self {
+        Ok(Self {
             blocks: blocks.into_boxed_slice(),
         })
     }
@@ -73,6 +79,7 @@ impl<'a> Block<'a> {
 struct State {
     expression: Vec<ExpressionToken>,
     operator_stack: Vec<Operator>,
+    fn_inputs: Vec<u8>,
     no_input_left: bool,
 }
 impl Default for State {
@@ -80,6 +87,7 @@ impl Default for State {
         Self {
             expression: Vec::new(),
             operator_stack: Vec::new(),
+            fn_inputs: Vec::new(),
             no_input_left: true,
         }
     }
@@ -103,7 +111,7 @@ impl State {
         self.expression
             .push(ExpressionToken::Number(Number::Complex(number)));
     }
-    fn end(&mut self) {
+    fn end(&mut self) -> Result<(), ParseError> {
         while let Some(operator) = self.operator_stack.pop() {
             if let Operator::LeftBracket(bracket) = operator {
                 match bracket {
@@ -113,24 +121,36 @@ impl State {
                     }
                     Bracket::Parenthesis => {}
                 }
-                self.close_off_bracket();
+                self.close_off_bracket()?;
             } else {
                 self.expression
                     .push(ExpressionToken::Function(Function::from(operator)));
             }
         }
+        Ok(())
     }
-    fn close_off_bracket(&mut self) {
-        todo!()
+    fn close_off_bracket(&mut self) -> Result<(), ParseError> {
+        if let Some(&Operator::Function(fun)) = self.operator_stack.last() {
+            self.operator_stack.pop();
+            let inputs = self.fn_inputs.pop().unwrap();
+            if !fun.inputs().contains(&inputs) {
+                return Err(if fun.inputs().start < inputs {
+                    ParseError::MissingInput
+                } else {
+                    ParseError::TooMuchInput
+                });
+            }
+        }
+        Ok(())
     }
 }
 impl<'a> BlockToken<'a> {
-    pub fn parse_expression(tokens: &mut Peekable<LexerIter<'a>>) -> Option<Self> {
+    pub fn parse_expression(tokens: &mut Peekable<LexerIter<'a>>) -> Result<Self, ParseError> {
         let mut state = State::default();
         let mut print = true;
         while let Some(token) = tokens.next() {
             match token.token {
-                LexerToken::UnexpectedEnd => return None,
+                LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
                 LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
                 LexerToken::Numeric(base, whole, part) => {
                     state.no_input_left = false;
@@ -153,11 +173,11 @@ impl<'a> BlockToken<'a> {
                 _ => todo!(),
             }
         }
-        state.end();
+        state.end()?;
         let expression = Expression {
             tokens: state.expression.into_boxed_slice(),
         };
-        Some(if print {
+        Ok(if print {
             Self::PrintExpression(expression)
         } else {
             Self::Expression(expression)
