@@ -1,6 +1,6 @@
 use crate::functions::Function;
 use core::iter::Peekable;
-use lexer::iter::LexerTokenIter;
+use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operator {
@@ -27,7 +27,7 @@ impl Operator {
     pub fn parse(
         no_input_left: bool,
         token: LexerToken,
-        iter: &mut Peekable<LexerTokenIter<'_>>,
+        iter: &mut Peekable<LexerIter<'_>>,
     ) -> Option<Self> {
         Some(if no_input_left {
             match token {

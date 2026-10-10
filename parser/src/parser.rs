@@ -3,7 +3,7 @@ use crate::operators::{Bracket, Operator};
 use crate::units::{UNIT_COUNT, UnitType};
 use core::iter::Peekable;
 use core::str::FromStr as _;
-use lexer::iter::LexerTokenIter;
+use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
 use number::traits::number::NumberImpl as _;
@@ -48,13 +48,13 @@ pub enum BlockToken<'a> {
 }
 impl<'a> Block<'a> {
     pub fn parse(s: &'a str) -> Option<Self> {
-        let mut tokens = LexerTokenIter::new(s).peekable();
+        let mut tokens = LexerIter::new(s).peekable();
         Self::parse_tokens(&mut tokens)
     }
-    pub fn parse_tokens(tokens: &mut Peekable<LexerTokenIter<'a>>) -> Option<Self> {
+    pub fn parse_tokens(tokens: &mut Peekable<LexerIter<'a>>) -> Option<Self> {
         let mut blocks = Vec::new();
         while let Some(token) = tokens.peek() {
-            let part = match token {
+            let part = match token.token {
                 LexerToken::UnexpectedEnd => return None,
                 LexerToken::Word("fn") => todo!(),
                 LexerToken::Word("let") => todo!(),
@@ -115,11 +115,11 @@ impl State {
     }
 }
 impl<'a> BlockToken<'a> {
-    pub fn parse_expression(tokens: &mut Peekable<LexerTokenIter<'a>>) -> Option<Self> {
+    pub fn parse_expression(tokens: &mut Peekable<LexerIter<'a>>) -> Option<Self> {
         let mut state = State::default();
         let mut print = true;
         while let Some(token) = tokens.next() {
-            match token {
+            match token.token {
                 LexerToken::UnexpectedEnd => return None,
                 LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
                 LexerToken::Numeric(base, whole, part) => {

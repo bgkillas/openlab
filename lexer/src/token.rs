@@ -1,6 +1,22 @@
-use crate::iter::LexerTokenIter;
+use crate::iter::LexerIter;
+use core::range::Range;
 use core::str::FromStr as _;
 use unicode_segmentation::UnicodeSegmentation as _;
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub struct LexerItem<'a> {
+    pub token: LexerToken<'a>,
+    pub range: Range<usize>,
+}
+impl<'a> PartialEq<LexerToken<'a>> for LexerItem<'_> {
+    fn eq(&self, other: &LexerToken<'a>) -> bool {
+        self.token == *other
+    }
+}
+impl<'a> PartialEq<LexerItem<'a>> for LexerToken<'_> {
+    fn eq(&self, other: &LexerItem<'a>) -> bool {
+        *self == other.token
+    }
+}
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum LexerToken<'a> {
     LeftCurlyBracket,
@@ -53,9 +69,10 @@ fn get_base(s: &str) -> Option<&str> {
         .last()?;
     (s.get(i + 1..=i + 1) == Some(">")).then_some(&s[..=i])
 }
-impl<'a> LexerTokenIter<'a> {
-    pub fn token(&mut self) -> Option<LexerToken<'a>> {
+impl<'a> LexerIter<'a> {
+    pub fn token(&mut self) -> Option<LexerItem<'a>> {
         self.until(|s| !s.trim().is_empty());
+        let init = self.cursor;
         let (_, grapheme) = self.graphemes.next()?;
         let token = match grapheme {
             "{" => LexerToken::LeftCurlyBracket,
@@ -113,7 +130,10 @@ impl<'a> LexerTokenIter<'a> {
                 LexerToken::Word(&self.source[start..self.cursor])
             }
         };
-        Some(token)
+        Some(LexerItem {
+            token,
+            range: Range::from(init..self.cursor),
+        })
     }
     pub fn get_string(&mut self) -> Option<LexerToken<'a>> {
         let start = self.cursor;
