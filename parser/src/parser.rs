@@ -1,5 +1,6 @@
 use crate::functions::Function;
 use crate::operators::{Bracket, Operator};
+use crate::units::{UNIT_COUNT, UnitType};
 use core::iter::Peekable;
 use core::str::FromStr as _;
 use lexer::iter::LexerTokenIter;
@@ -7,7 +8,9 @@ use lexer::token::LexerToken;
 use number::float::complex::Complex;
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
-pub type NumberInner = NumberUnits<Complex<f64>, f16, 8>;
+pub type Float = f64;
+pub type NumberBase = Complex<Float>;
+pub type NumberInner = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
 pub type Number = number::number::Number<NumberInner>;
 #[derive(Clone, Default, Debug)]
 pub struct Expression {

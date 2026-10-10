@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 lexer = {workspace = true}
 number = {workspace = true}
+enum-map = {workspace = true}
 
 [lints]
 workspace = true

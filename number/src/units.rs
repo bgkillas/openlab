@@ -7,7 +7,7 @@ use core::fmt::{Debug, Formatter};
 use core::ops::Neg;
 use std::simd::{Simd, SimdElement};
 pub trait SimdTrait<const N: usize>: SimdElement + RealImpl {
-    type Simd: Copy + Clone + Debug + PartialEq + Default + Operations;
+    type Simd: Copy + Clone + Debug + PartialEq + Default + Operations + From<[Self; N]>;
 }
 impl<const N: usize> SimdTrait<N> for f16 {
     type Simd = Simd<Self, N>;
@@ -23,6 +23,11 @@ pub struct NumberUnits<T: NumberImpl, U: SimdTrait<N>, const N: usize> {
     pub number: T,
     pub units: Units<U, N>,
 }
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> NumberUnits<T, U, N> {
+    pub fn new(number: T, units: Units<U, N>) -> Self {
+        Self { number, units }
+    }
+}
 impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Debug for NumberUnits<T, U, N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         if self.units.is_zero() {
@@ -35,6 +40,13 @@ impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Debug for NumberUnits<T, U,
 #[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub struct Units<U: SimdTrait<N>, const N: usize> {
     pub units: U::Simd,
+}
+impl<U: SimdTrait<N>, const N: usize> From<[U; N]> for Units<U, N> {
+    fn from(value: [U; N]) -> Self {
+        Self {
+            units: U::Simd::from(value),
+        }
+    }
 }
 impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> From<T> for NumberUnits<T, U, N> {
     fn from(number: T) -> Self {
