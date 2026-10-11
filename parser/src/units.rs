@@ -5,7 +5,7 @@ use number::traits::complex::ComplexImpl as _;
 use number::units::Units;
 pub type UnitType = f16;
 pub const UNIT_COUNT: usize = 8;
-#[derive(Enum)]
+#[derive(Enum, Debug)]
 pub enum Unit {
     Second = 0,
     Meter = 1,
@@ -16,7 +16,7 @@ pub enum Unit {
     Candela = 6,
     Usd = 7,
 }
-#[derive(Enum)]
+#[derive(Enum, Debug)]
 pub enum Prefix {
     Quetta,
     Ronna,
@@ -83,7 +83,9 @@ impl Prefix {
             ms: [(Prefix, &str, &str); N],
         ) -> (Prefix, &'a str) {
             for (p, a, b) in ms {
-                if let Some(t) = strip_or(s, a, b) {
+                if let Some(t) = strip_or(s, a, b)
+                    && !t.is_empty()
+                {
                     return (p, t);
                 }
             }

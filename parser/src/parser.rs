@@ -1,6 +1,6 @@
 use crate::functions::Function;
 use crate::operators::{Bracket, Operator};
-use crate::units::{UNIT_COUNT, UnitType};
+use crate::units::{UNIT_COUNT, Unit, UnitType};
 use core::iter::Peekable;
 use core::str::FromStr as _;
 use lexer::iter::LexerIter;
@@ -168,6 +168,7 @@ impl<'a> BlockToken<'a> {
                     state.no_input_left = true;
                     state.push_operator(Operator::Function(fun));
                 }
+                LexerToken::Word(str) if let Some(num) = Unit::parse(str) => state.push_number(num),
                 t if let Some(op) = Operator::parse(state.no_input_left, t, tokens) => {
                     state.no_input_left = true;
                     state.push_operator(op);

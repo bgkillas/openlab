@@ -7,7 +7,6 @@
 #![feature(gca_const_items)]
 #![feature(generic_const_items)]
 #![feature(gca_macroless_args)]
-#![feature(debug_closure_helpers)]
 #![feature(option_array_transpose)]
 #![feature(portable_simd)]
 #![feature(f16)]
