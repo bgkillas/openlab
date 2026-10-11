@@ -8,7 +8,7 @@ pub const UNIT_COUNT: usize = 8;
 #[derive(Enum, Debug)]
 pub enum Unit {
     Second = 0,
-    Meter = 1,
+    Metre = 1,
     Gram = 2,
     Ampere = 3,
     Kelvin = 4,
@@ -127,13 +127,13 @@ impl Unit {
         let (prefix, postfix) = Prefix::parse(s);
         let mut units: EnumMap<Self, UnitType> = EnumMap::default();
         match postfix {
-            "s" => units[Self::Second] = 1.0,
-            "m" => units[Self::Meter] = 1.0,
-            "g" => units[Self::Gram] = 1.0,
-            "A" => units[Self::Ampere] = 1.0,
-            "K" => units[Self::Kelvin] = 1.0,
-            "mol" => units[Self::Mole] = 1.0,
-            "cd" => units[Self::Candela] = 1.0,
+            "s" | "second" => units[Self::Second] = 1.0,
+            "m" | "metre" | "meter" => units[Self::Metre] = 1.0,
+            "g" | "gram" => units[Self::Gram] = 1.0,
+            "A" | "ampere" => units[Self::Ampere] = 1.0,
+            "K" | "kelvin" => units[Self::Kelvin] = 1.0,
+            "mol" | "mole" => units[Self::Mole] = 1.0,
+            "cd" | "candela" => units[Self::Candela] = 1.0,
             "USD" => units[Self::Usd] = 1.0,
             _ => return None,
         }
