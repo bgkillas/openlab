@@ -1,19 +1,21 @@
 use crate::float::complex::Complex;
 use crate::float::real::Real;
 use crate::traits::assign::NegAssign;
-use crate::traits::complex::ComplexImpl as _;
+use crate::traits::complex::ComplexImpl;
 use crate::traits::real::RealImpl;
 use core::fmt::Debug;
 use core::ops::Neg;
 pub trait NumberImpl:
     Default + Copy + Clone + Debug + PartialEq + Neg<Output = Self> + NegAssign
 {
+    type NumberReal: RealImpl;
     fn zero() -> Self {
         Self::default()
     }
     fn one() -> Self {
         Self::parse_number(2, 1, 0)
     }
+    fn try_real(self) -> Option<Self::NumberReal>;
     fn is_zero(self) -> bool {
         self == Self::zero()
     }
@@ -22,6 +24,8 @@ pub trait NumberImpl:
     fn sub(self, rhs: Self) -> Option<Self>;
     fn mul(self, rhs: Self) -> Option<Self>;
     fn div(self, rhs: Self) -> Option<Self>;
+    fn pow(self, rhs: Self) -> Option<Self>;
+    fn root(self, rhs: Self) -> Option<Self>;
     fn add_assign(&mut self, rhs: Self) -> Option<()> {
         *self = self.add(rhs)?;
         Some(())
@@ -38,6 +42,14 @@ pub trait NumberImpl:
         *self = self.div(rhs)?;
         Some(())
     }
+    fn pow_assign(&mut self, rhs: Self) -> Option<()> {
+        *self = self.pow(rhs)?;
+        Some(())
+    }
+    fn root_assign(&mut self, rhs: Self) -> Option<()> {
+        *self = self.root(rhs)?;
+        Some(())
+    }
     fn sum(mut iter: impl Iterator<Item = Option<Self>>) -> Option<Self> {
         let Some(maybe_sum) = iter.next() else {
             return Some(Self::default());
@@ -50,6 +62,10 @@ pub trait NumberImpl:
     }
 }
 impl<T: RealImpl> NumberImpl for Complex<T> {
+    type NumberReal = Real<T>;
+    fn try_real(self) -> Option<Self::NumberReal> {
+        todo!()
+    }
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {
         Self::new_real(Real::<T>::parse_number(base, whole, part))
     }
@@ -65,8 +81,18 @@ impl<T: RealImpl> NumberImpl for Complex<T> {
     fn div(self, rhs: Self) -> Option<Self> {
         Some(self / rhs)
     }
+    fn pow(self, rhs: Self) -> Option<Self> {
+        Some(ComplexImpl::pow(self, rhs))
+    }
+    fn root(self, rhs: Self) -> Option<Self> {
+        Some(ComplexImpl::root(self, rhs))
+    }
 }
 impl<T: RealImpl> NumberImpl for Real<T> {
+    type NumberReal = Self;
+    fn try_real(self) -> Option<Self::NumberReal> {
+        Some(self)
+    }
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {
         Self(T::parse_number(base, whole, part))
     }
@@ -81,5 +107,11 @@ impl<T: RealImpl> NumberImpl for Real<T> {
     }
     fn div(self, rhs: Self) -> Option<Self> {
         Some(self / rhs)
+    }
+    fn pow(self, rhs: Self) -> Option<Self> {
+        Some(RealImpl::pow(self, rhs))
+    }
+    fn root(self, rhs: Self) -> Option<Self> {
+        Some(RealImpl::root(self, rhs))
     }
 }

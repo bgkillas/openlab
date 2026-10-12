@@ -57,7 +57,31 @@ where
     #[must_use]
     fn conjugate(self) -> Self;
     #[must_use]
+    fn sqrt(self) -> Self;
+    #[must_use]
     fn abs(self) -> Self::Real;
     #[must_use]
     fn abs_squared(self) -> Self::Real;
+    #[must_use]
+    fn pow(self, rhs: Self) -> Self;
+    #[must_use]
+    fn pow_real(self, rhs: Self::Real) -> Self;
+    #[must_use]
+    fn root(self, rhs: Self) -> Self;
+    #[must_use]
+    fn recip(self) -> Self;
+    #[must_use]
+    fn exp(self) -> Self;
+    #[must_use]
+    fn ln(self) -> Self;
+    #[must_use]
+    fn arg(self) -> Self::Real;
+    #[must_use]
+    fn sin(self) -> Self;
+    #[must_use]
+    fn cos(self) -> Self;
+    #[must_use]
+    fn atan2(self, x: Self) -> Self;
+    #[must_use]
+    fn mul_i(self, negative: bool) -> Self;
 }

@@ -1,7 +1,9 @@
 pub mod assign;
 pub mod base;
+pub mod cast;
 pub mod complex;
 pub mod matrix;
 pub mod not;
 pub mod number;
+pub mod pow;
 pub mod real;

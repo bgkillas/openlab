@@ -93,6 +93,28 @@ impl<C: NumberImpl> Number<C> {
         }
         Some(())
     }
+    pub fn pow_assign(&mut self, rhs: &Self) -> Option<()> {
+        if self.size() != rhs.size() {
+            return None;
+        }
+        match (self, rhs) {
+            (Self::Complex(a), &Self::Complex(b)) => a.pow_assign(b)?,
+            (Self::Matrix(_), Self::Matrix(_)) => return None,
+            _ => unreachable!(),
+        }
+        Some(())
+    }
+    pub fn root_assign(&mut self, rhs: &Self) -> Option<()> {
+        if self.size() != rhs.size() {
+            return None;
+        }
+        match (self, rhs) {
+            (Self::Complex(a), &Self::Complex(b)) => a.root_assign(b)?,
+            (Self::Matrix(_), Self::Matrix(_)) => return None,
+            _ => unreachable!(),
+        }
+        Some(())
+    }
     pub fn new(dimension: NumberDimension) -> Self {
         match dimension {
             NumberDimension::Complex => Self::Complex(C::default()),

@@ -1,6 +1,7 @@
 use crate::assign_neg;
 use crate::traits::assign::NegAssign;
 use crate::traits::base::Operations;
+use crate::traits::cast::Cast;
 use crate::traits::number::NumberImpl;
 use crate::traits::real::RealImpl;
 use core::fmt::{Debug, Formatter};
@@ -57,6 +58,10 @@ impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> From<T> for NumberUnits<T, 
     }
 }
 impl<U: SimdTrait<N>, const N: usize> NumberImpl for Units<U, N> {
+    type NumberReal = U;
+    fn try_real(self) -> Option<Self::NumberReal> {
+        None
+    }
     fn parse_number(_: u8, _: u128, _: u128) -> Self {
         Self::default()
     }
@@ -74,8 +79,21 @@ impl<U: SimdTrait<N>, const N: usize> NumberImpl for Units<U, N> {
         self.units -= rhs.units;
         Some(self)
     }
+    fn pow(self, rhs: Self) -> Option<Self> {
+        rhs.is_zero().then_some(self)
+    }
+    fn root(self, rhs: Self) -> Option<Self> {
+        rhs.is_zero().then_some(self)
+    }
 }
-impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> NumberImpl for NumberUnits<T, U, N> {
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> NumberImpl for NumberUnits<T, U, N>
+where
+    T::NumberReal: Cast<U>,
+{
+    type NumberReal = T::NumberReal;
+    fn try_real(self) -> Option<Self::NumberReal> {
+        self.number.try_real()
+    }
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {
         Self {
             number: T::parse_number(base, whole, part),
@@ -104,6 +122,22 @@ impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> NumberImpl for NumberUnits<
         Some(Self {
             number: self.number.div(rhs.number)?,
             units: self.units.div(rhs.units)?,
+        })
+    }
+    fn pow(self, rhs: Self) -> Option<Self> {
+        let mut units = self.units.pow(rhs.units)?;
+        units.units *= U::Simd::from([rhs.number.try_real()?.cast(); N]);
+        Some(Self {
+            number: self.number.pow(rhs.number)?,
+            units,
+        })
+    }
+    fn root(self, rhs: Self) -> Option<Self> {
+        let mut units = self.units.root(rhs.units)?;
+        units.units /= U::Simd::from([rhs.number.try_real()?.cast(); N]);
+        Some(Self {
+            number: self.number.root(rhs.number)?,
+            units,
         })
     }
 }

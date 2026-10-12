@@ -126,7 +126,10 @@ impl<'a> LexerIter<'a> {
             "\"" => self.get_string().unwrap_or(LexerToken::UnexpectedEnd),
             _ => {
                 let start = self.cursor;
-                self.until(|s| s.trim().is_empty());
+                self.until(|s| {
+                    s.trim().is_empty()
+                        || (s.is_ascii() && s.chars().next().unwrap().is_ascii_punctuation())
+                });
                 LexerToken::Word(&self.source[start..self.cursor])
             }
         };

@@ -94,6 +94,7 @@ impl Default for State {
 }
 impl State {
     fn push_operator(&mut self, operator: Operator) {
+        self.no_input_left = true;
         while let Some(top) = self.operator_stack.pop_if(|top| {
             !matches!(top, Operator::LeftBracket(_) | Operator::Function(_))
                 && (top.precedence() > operator.precedence()
@@ -110,6 +111,7 @@ impl State {
         self.operator_stack.push(operator);
     }
     fn push_number(&mut self, number: NumberInner) {
+        self.no_input_left = false;
         self.expression
             .push(ExpressionToken::Number(Number::Complex(number)));
     }
@@ -155,7 +157,6 @@ impl<'a> BlockToken<'a> {
                 LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
                 LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
                 LexerToken::Numeric(base, whole, part) => {
-                    state.no_input_left = false;
                     let number =
                         NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
                     state.push_number(number);
@@ -165,12 +166,12 @@ impl<'a> BlockToken<'a> {
                     print = false;
                 }
                 LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
-                    state.no_input_left = true;
                     state.push_operator(Operator::Function(fun));
                 }
-                LexerToken::Word(str) if let Some(num) = Unit::parse(str) => state.push_number(num),
+                LexerToken::Word(str) if let Some(num) = Unit::parse(str) => {
+                    state.push_number(num);
+                }
                 t if let Some(op) = Operator::parse(state.no_input_left, t, tokens) => {
-                    state.no_input_left = true;
                     state.push_operator(op);
                 }
                 _ => todo!(),
