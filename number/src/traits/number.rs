@@ -64,7 +64,7 @@ pub trait NumberImpl:
 impl<T: RealImpl> NumberImpl for Complex<T> {
     type NumberReal = Real<T>;
     fn try_real(self) -> Option<Self::NumberReal> {
-        todo!()
+        self.im.is_zero().then_some(self.re)
     }
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {
         Self::new_real(Real::<T>::parse_number(base, whole, part))
