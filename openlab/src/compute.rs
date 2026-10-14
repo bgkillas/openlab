@@ -49,16 +49,21 @@ impl ComputeInner {
     }
     fn fun(&mut self, fun: Function) -> Option<()> {
         let num = {
-            let mut inputs = self
-                .stack
-                .drain(self.stack.len() - fun.inputs().strict_cast::<usize>()..);
+            let mut inputs = self.stack.drain(
+                self.stack
+                    .len()
+                    .checked_sub(fun.inputs().strict_cast::<usize>())?..,
+            );
+            let mut next = || inputs.next().unwrap();
             match fun {
-                Function::Add => (inputs.next().unwrap() + inputs.next().unwrap())?,
-                Function::Sub => (inputs.next().unwrap() - inputs.next().unwrap())?,
-                Function::Mul => (inputs.next().unwrap() * inputs.next().unwrap())?,
-                Function::Div => (inputs.next().unwrap() / inputs.next().unwrap())?,
-                Function::Pow => inputs.next().unwrap().pow(&inputs.next().unwrap())?,
-                Function::Root => inputs.next().unwrap().root(&inputs.next().unwrap())?,
+                Function::Add => (next() + next())?,
+                Function::Sub => (next() - next())?,
+                Function::Mul => (next() * next())?,
+                Function::Div => (next() / next())?,
+                Function::Pow => next().pow(&next())?,
+                Function::Root => next().root(&next())?,
+                Function::Identity => next(),
+                Function::Negate => -next(),
                 _ => todo!(),
             }
         };

@@ -1,9 +1,11 @@
 use crate::matrix::dense::Matrix;
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
+use crate::traits::assign::NegAssign;
 use crate::traits::matrix::MatrixImpl as _;
 use crate::traits::number::NumberImpl;
 use crate::traits::pow::{Pow, Root};
 use core::iter;
+use core::ops::Neg;
 use core::ops::{Add, Div, Mul, Sub};
 use std::debug_assert_matches;
 #[derive(Clone, PartialEq, Debug)]
@@ -81,6 +83,26 @@ optional_operator!(Mul, mul, mul_assign);
 optional_operator!(Div, div, div_assign);
 optional_operator!(Pow, pow, pow_assign);
 optional_operator!(Root, root, root_assign);
+impl<C: NumberImpl> Neg for Number<C> {
+    type Output = Self;
+    fn neg(mut self) -> Self::Output {
+        self.neg_assign();
+        self
+    }
+}
+impl<C: NumberImpl> NegAssign for Number<C> {
+    fn neg_assign(&mut self) {
+        match self {
+            Self::Complex(c) => c.neg_assign(),
+            Self::Matrix(m) => m.neg_assign(),
+            Self::List(l) => {
+                for e in l {
+                    e.neg_assign();
+                }
+            }
+        }
+    }
+}
 impl<C: NumberImpl> Number<C> {
     pub fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.size() != rhs.size() {
