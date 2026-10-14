@@ -21,12 +21,10 @@ impl<'a> Compute<'a> {
             match block {
                 BlockToken::Expression(expr) => {
                     self.inner.expr(expr);
-                    debug_assert_eq!(self.inner.stack.len(), 1);
                 }
                 BlockToken::PrintExpression(expr) => {
-                    self.inner.expr(expr);
-                    debug_assert_eq!(self.inner.stack.len(), 1);
-                    println!("{:?}", self.inner.stack[0]);
+                    let res = self.inner.expr(expr);
+                    println!("{res:?}");
                 }
                 _ => todo!(),
             }
@@ -34,7 +32,7 @@ impl<'a> Compute<'a> {
     }
 }
 impl ComputeInner {
-    fn expr(&mut self, expr: &Expression) {
+    fn expr(&mut self, expr: &Expression) -> Option<Number> {
         for token in &expr.tokens {
             match token {
                 ExpressionToken::Number(num) => self.stack.push(num.clone()),
@@ -43,6 +41,9 @@ impl ComputeInner {
                 ExpressionToken::Skip(_) => todo!(),
             }
         }
+        let res = self.stack.pop();
+        debug_assert_eq!(self.stack, []);
+        res
     }
     fn fun(&mut self, fun: Function) {
         match fun {

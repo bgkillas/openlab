@@ -3,6 +3,7 @@ use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::matrix::MatrixImpl as _;
 use crate::traits::number::NumberImpl;
 use core::iter;
+use std::debug_assert_matches;
 #[derive(Clone, PartialEq, Debug)]
 pub enum Number<C>
 where
@@ -10,20 +11,21 @@ where
 {
     Complex(C),
     Matrix(Matrix<C>),
-    //List(Box<Vec<Number<C>>>)
+    List(Vec<Self>),
 }
 impl<C: NumberImpl> Default for Number<C> {
     fn default() -> Self {
         Self::Complex(C::default())
     }
 }
-#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum NumberDimension {
     #[default]
     Complex,
     Matrix(MatrixDimension),
+    List(Box<[Self]>),
 }
-#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub struct NumberIndexChecked {
     pub dimension: NumberDimension,
     pub index: NumberIndex,
@@ -41,12 +43,17 @@ impl NumberIndexChecked {
             NumberIndex::Matrix(index),
         )
     }
+    pub fn list(dimension: NumberDimension, i: usize, index: NumberIndex) -> Self {
+        debug_assert_matches!(dimension, NumberDimension::List(_));
+        Self::new(dimension, NumberIndex::List(i, Box::new(index)))
+    }
 }
-#[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum NumberIndex {
     #[default]
     Complex,
     Matrix(MatrixIndex),
+    List(usize, Box<Self>),
 }
 impl<C: NumberImpl> Number<C> {
     pub fn add_assign(&mut self, rhs: &Self) -> Option<()> {
@@ -115,16 +122,18 @@ impl<C: NumberImpl> Number<C> {
         }
         Some(())
     }
-    pub fn new(dimension: NumberDimension) -> Self {
+    pub fn new(dimension: &NumberDimension) -> Self {
         match dimension {
-            NumberDimension::Complex => Self::Complex(C::default()),
-            NumberDimension::Matrix(dim) => Self::Matrix(Matrix::new(dim)),
+            &NumberDimension::Complex => Self::Complex(C::default()),
+            &NumberDimension::Matrix(dim) => Self::Matrix(Matrix::new(dim)),
+            NumberDimension::List(dim) => Self::List(dim.iter().map(|l| Self::new(l)).collect()),
         }
     }
     pub fn size(&self) -> NumberDimension {
         match self {
             Self::Complex(_) => NumberDimension::Complex,
             Self::Matrix(mat) => NumberDimension::Matrix(mat.dimension),
+            Self::List(l) => NumberDimension::List(l.iter().map(Self::size).collect()),
         }
     }
     pub fn get(&self, index: NumberIndexChecked) -> Option<&C> {
@@ -154,6 +163,15 @@ impl<C: NumberImpl> Number<C> {
                 m.iter()
                     .map(|(i, c)| (NumberIndexChecked::matrix(m.dimension, i), c)),
             ),
+            Self::List(l) => {
+                let dim = self.size();
+                NumberIter::C(l.iter().enumerate().flat_map(move |(i, elem)| {
+                    let value = dim.clone();
+                    let iter: Box<dyn Iterator<Item = (NumberIndexChecked, &C)>> =
+                        Box::new(elem.iter());
+                    iter.map(move |(a, b)| (NumberIndexChecked::list(value.clone(), i, a.index), b))
+                }))
+            }
         }
     }
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (NumberIndexChecked, &mut C)> {
@@ -166,17 +184,28 @@ impl<C: NumberImpl> Number<C> {
                         .map(move |(i, c)| (NumberIndexChecked::matrix(dim, i), c)),
                 )
             }
+            Self::List(l) => {
+                let dim = NumberDimension::List(l.iter().map(Self::size).collect());
+                NumberIter::C(l.iter_mut().enumerate().flat_map(move |(i, elem)| {
+                    let value = dim.clone();
+                    let iter: Box<dyn Iterator<Item = (NumberIndexChecked, &mut C)>> =
+                        Box::new(elem.iter_mut());
+                    iter.map(move |(a, b)| (NumberIndexChecked::list(value.clone(), i, a.index), b))
+                }))
+            }
         }
     }
 }
-pub enum NumberIter<A, B> {
+pub enum NumberIter<A, B, C> {
     A(A),
     B(B),
+    C(C),
 }
-impl<T, A, B> Iterator for NumberIter<A, B>
+impl<T, A, B, C> Iterator for NumberIter<A, B, C>
 where
     A: Iterator<Item = T>,
     B: Iterator<Item = T>,
+    C: Iterator<Item = T>,
 {
     type Item = T;
 
@@ -184,6 +213,7 @@ where
         match self {
             Self::A(i) => i.next(),
             Self::B(i) => i.next(),
+            Self::C(i) => i.next(),
         }
     }
 }
