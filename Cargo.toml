@@ -23,10 +23,10 @@ lexer = {path = "lexer"}
 number = {path = "number"}
 openlab = {path = "openlab"}
 parser = {path = "parser"}
-replace_with = "0.1.8"
-itertools = "0.15.0"
-unicode-segmentation = "1.13.3"
-enum-map = "3.1.0"
+replace_with = {version = "0.1.8", default-features = false, features = ["std"]}
+itertools = {version = "0.15.0", default-features = false, features = ["use_std"]}
+unicode-segmentation = {version = "1.13.3", default-features = false, features = []}
+enum-map = {version = "3.1.0", default-features = false, features = ["derive"]}
 
 [workspace.lints.clippy]
 pedantic = {level = "warn", priority = -1}
