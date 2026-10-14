@@ -63,6 +63,7 @@ impl<C: NumberImpl> Number<C> {
         match (self, rhs) {
             (Self::Complex(a), &Self::Complex(b)) => a.add_assign(b)?,
             (Self::Matrix(a), Self::Matrix(b)) => a.add_assign(b)?,
+            (Self::List(_), Self::List(_)) => return None,
             _ => unreachable!(),
         }
         Some(())
@@ -74,6 +75,7 @@ impl<C: NumberImpl> Number<C> {
         match (self, rhs) {
             (Self::Complex(a), &Self::Complex(b)) => a.sub_assign(b)?,
             (Self::Matrix(a), Self::Matrix(b)) => a.sub_assign(b)?,
+            (Self::List(_), Self::List(_)) => return None,
             _ => unreachable!(),
         }
         Some(())
@@ -85,6 +87,7 @@ impl<C: NumberImpl> Number<C> {
         match (self, rhs) {
             (Self::Complex(a), &Self::Complex(b)) => a.mul_assign(b)?,
             (Self::Matrix(a), Self::Matrix(b)) => a.mul_assign(b)?,
+            (Self::List(_), Self::List(_)) => return None,
             _ => unreachable!(),
         }
         Some(())
@@ -95,7 +98,7 @@ impl<C: NumberImpl> Number<C> {
         }
         match (self, rhs) {
             (Self::Complex(a), &Self::Complex(b)) => a.div_assign(b)?,
-            (Self::Matrix(_), Self::Matrix(_)) => return None,
+            (Self::Matrix(_), Self::Matrix(_)) | (Self::List(_), Self::List(_)) => return None,
             _ => unreachable!(),
         }
         Some(())
@@ -106,7 +109,7 @@ impl<C: NumberImpl> Number<C> {
         }
         match (self, rhs) {
             (Self::Complex(a), &Self::Complex(b)) => a.pow_assign(b)?,
-            (Self::Matrix(_), Self::Matrix(_)) => return None,
+            (Self::Matrix(_), Self::Matrix(_)) | (Self::List(_), Self::List(_)) => return None,
             _ => unreachable!(),
         }
         Some(())
@@ -117,7 +120,7 @@ impl<C: NumberImpl> Number<C> {
         }
         match (self, rhs) {
             (Self::Complex(a), &Self::Complex(b)) => a.root_assign(b)?,
-            (Self::Matrix(_), Self::Matrix(_)) => return None,
+            (Self::Matrix(_), Self::Matrix(_)) | (Self::List(_), Self::List(_)) => return None,
             _ => unreachable!(),
         }
         Some(())
@@ -143,6 +146,15 @@ impl<C: NumberImpl> Number<C> {
         match (self, index.index) {
             (Self::Complex(val), NumberIndex::Complex) => Some(val),
             (Self::Matrix(mat), NumberIndex::Matrix(i)) => mat.get(i),
+            (Self::List(l), NumberIndex::List(i, idx)) => l[i].get_unchecked(*idx),
+            _ => unreachable!(),
+        }
+    }
+    pub fn get_unchecked(&self, index: NumberIndex) -> Option<&C> {
+        match (self, index) {
+            (Self::Complex(val), NumberIndex::Complex) => Some(val),
+            (Self::Matrix(mat), NumberIndex::Matrix(i)) => mat.get(i),
+            (Self::List(l), NumberIndex::List(i, idx)) => l[i].get_unchecked(*idx),
             _ => unreachable!(),
         }
     }
@@ -153,6 +165,15 @@ impl<C: NumberImpl> Number<C> {
         match (self, index.index) {
             (Self::Complex(val), NumberIndex::Complex) => Some(val),
             (Self::Matrix(mat), NumberIndex::Matrix(i)) => mat.get_mut(i),
+            (Self::List(l), NumberIndex::List(i, idx)) => l[i].get_unchecked_mut(*idx),
+            _ => unreachable!(),
+        }
+    }
+    pub fn get_unchecked_mut(&mut self, index: NumberIndex) -> Option<&mut C> {
+        match (self, index) {
+            (Self::Complex(val), NumberIndex::Complex) => Some(val),
+            (Self::Matrix(mat), NumberIndex::Matrix(i)) => mat.get_mut(i),
+            (Self::List(l), NumberIndex::List(i, idx)) => l[i].get_unchecked_mut(*idx),
             _ => unreachable!(),
         }
     }
@@ -167,9 +188,10 @@ impl<C: NumberImpl> Number<C> {
                 let dim = self.size();
                 NumberIter::C(l.iter().enumerate().flat_map(move |(i, elem)| {
                     let value = dim.clone();
-                    let iter: Box<dyn Iterator<Item = (NumberIndexChecked, &C)>> =
-                        Box::new(elem.iter());
-                    iter.map(move |(a, b)| (NumberIndexChecked::list(value.clone(), i, a.index), b))
+                    Box::<dyn Iterator<Item = (NumberIndexChecked, &C)>>::from(Box::new(
+                        elem.iter(),
+                    ))
+                    .map(move |(a, b)| (NumberIndexChecked::list(value.clone(), i, a.index), b))
                 }))
             }
         }
@@ -188,9 +210,10 @@ impl<C: NumberImpl> Number<C> {
                 let dim = NumberDimension::List(l.iter().map(Self::size).collect());
                 NumberIter::C(l.iter_mut().enumerate().flat_map(move |(i, elem)| {
                     let value = dim.clone();
-                    let iter: Box<dyn Iterator<Item = (NumberIndexChecked, &mut C)>> =
-                        Box::new(elem.iter_mut());
-                    iter.map(move |(a, b)| (NumberIndexChecked::list(value.clone(), i, a.index), b))
+                    Box::<dyn Iterator<Item = (NumberIndexChecked, &mut C)>>::from(Box::new(
+                        elem.iter_mut(),
+                    ))
+                    .map(move |(a, b)| (NumberIndexChecked::list(value.clone(), i, a.index), b))
                 }))
             }
         }
