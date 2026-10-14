@@ -12,7 +12,7 @@ pub fn matrix_allocation() {
         Complex::new(Real(i.row as f64), Real(i.col as f64))
     });
     for (i, val) in matrix.iter_mut() {
-        assert_eq!(&Complex::new(Real(i.row as f64), Real(i.col as f64)), val);
+        assert_eq!(Complex::new(Real(i.row as f64), Real(i.col as f64)), val);
     }
     matrix.new_dimension_with(dim2, |_, i| {
         Complex::new(Real(-(i.row as f64)), Real(-(i.col as f64)))

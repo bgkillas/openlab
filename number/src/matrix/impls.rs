@@ -35,12 +35,12 @@ impl<C: NumberImpl> MatrixImpl for Matrix<C> {
             height: self.dimension.height,
         };
         let mut new = Self::new_uninit(dim);
-        let mut vec: Vec<&C> = Vec::with_capacity(rhs.height());
+        let mut vec: Vec<C> = Vec::with_capacity(rhs.height());
         for (i, col) in rhs.cols().into_iter().enumerate() {
             vec.extend(col);
             for (j, row) in self.rows().enumerate() {
                 let index = MatrixIndex::new(j.strict_cast(), i.strict_cast());
-                let entry = C::sum(row.iter().zip(vec.iter()).map(|(a, b)| a.mul(**b)))?;
+                let entry = C::sum(row.iter().zip(vec.iter()).map(|(a, b)| a.mul(*b)))?;
                 new.get_uninit(index).unwrap().write(entry);
             }
             vec.clear();
@@ -94,9 +94,9 @@ impl<C: NumberImpl> MatrixImpl for Matrix<C> {
         self.entries_mut().swap(i, j);
         Some(())
     }
-    fn get(&self, index: MatrixIndex) -> Option<&C> {
+    fn get(&self, index: MatrixIndex) -> Option<Self::Entry> {
         let i = self.dimension.index(index)?;
-        Some(&self.entries()[i])
+        Some(self.entries()[i])
     }
     fn get_mut(&mut self, index: MatrixIndex) -> Option<&mut C> {
         let i = self.dimension.index(index)?;

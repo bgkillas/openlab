@@ -158,10 +158,10 @@ impl<C: NumberImpl> Matrix<C> {
     pub fn rows(&self) -> impl Iterator<Item = &[C]> {
         self.entries().chunks_exact(self.width())
     }
-    pub fn cols(&self) -> IntoChunks<impl Iterator<Item = &C>> {
+    pub fn cols(&self) -> IntoChunks<impl Iterator<Item = C>> {
         (0..self.width())
             .flat_map(|c| (c..self.size()).step_by(self.width()))
-            .map(|i| &self.entries()[i])
+            .map(|i| self.entries()[i])
             .chunks(self.height())
     }
     pub fn entries_mut(&mut self) -> &mut [C] {
@@ -171,10 +171,11 @@ impl<C: NumberImpl> Matrix<C> {
             &mut []
         }
     }
-    pub fn iter(&self) -> impl Iterator<Item = (MatrixIndex, &C)> {
+    pub fn iter(&self) -> impl Iterator<Item = (MatrixIndex, C)> {
         let dim = self.dimension;
         self.entries()
             .iter()
+            .copied()
             .enumerate()
             .map(move |(i, val)| (MatrixIndex::from(dim, i).unwrap(), val))
     }

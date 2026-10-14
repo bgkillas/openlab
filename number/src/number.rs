@@ -139,20 +139,20 @@ impl<C: NumberImpl> Number<C> {
             Self::List(l) => NumberDimension::List(l.iter().map(Self::size).collect()),
         }
     }
-    pub fn get(&self, index: NumberIndexChecked) -> Option<&C> {
+    pub fn get(&self, index: NumberIndexChecked) -> Option<C> {
         if index.dimension != self.size() {
             return None;
         }
         match (self, index.index) {
-            (Self::Complex(val), NumberIndex::Complex) => Some(val),
+            (Self::Complex(val), NumberIndex::Complex) => Some(*val),
             (Self::Matrix(mat), NumberIndex::Matrix(i)) => mat.get(i),
             (Self::List(l), NumberIndex::List(i, idx)) => l[i].get_unchecked(*idx),
             _ => unreachable!(),
         }
     }
-    pub fn get_unchecked(&self, index: NumberIndex) -> Option<&C> {
+    pub fn get_unchecked(&self, index: NumberIndex) -> Option<C> {
         match (self, index) {
-            (Self::Complex(val), NumberIndex::Complex) => Some(val),
+            (Self::Complex(val), NumberIndex::Complex) => Some(*val),
             (Self::Matrix(mat), NumberIndex::Matrix(i)) => mat.get(i),
             (Self::List(l), NumberIndex::List(i, idx)) => l[i].get_unchecked(*idx),
             _ => unreachable!(),
@@ -177,9 +177,9 @@ impl<C: NumberImpl> Number<C> {
             _ => unreachable!(),
         }
     }
-    pub fn iter(&self) -> impl Iterator<Item = (NumberIndexChecked, &C)> {
+    pub fn iter(&self) -> impl Iterator<Item = (NumberIndexChecked, C)> {
         match self {
-            Self::Complex(c) => NumberIter::A(iter::once((NumberIndexChecked::complex(), c))),
+            &Self::Complex(c) => NumberIter::A(iter::once((NumberIndexChecked::complex(), c))),
             Self::Matrix(m) => NumberIter::B(
                 m.iter()
                     .map(|(i, c)| (NumberIndexChecked::matrix(m.dimension, i), c)),
@@ -188,10 +188,8 @@ impl<C: NumberImpl> Number<C> {
                 let dim = self.size();
                 NumberIter::C(l.iter().enumerate().flat_map(move |(i, elem)| {
                     let value = dim.clone();
-                    Box::<dyn Iterator<Item = (NumberIndexChecked, &C)>>::from(Box::new(
-                        elem.iter(),
-                    ))
-                    .map(move |(a, b)| (NumberIndexChecked::list(value.clone(), i, a.index), b))
+                    Box::<dyn Iterator<Item = (NumberIndexChecked, C)>>::from(Box::new(elem.iter()))
+                        .map(move |(a, b)| (NumberIndexChecked::list(value.clone(), i, a.index), b))
                 }))
             }
         }

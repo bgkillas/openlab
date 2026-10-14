@@ -20,7 +20,7 @@ pub trait MatrixImpl: Default + Clone + Debug + PartialEq + Neg<Output = Self> +
         self.dimension().size()
     }
     fn swap(&mut self, from: MatrixIndex, to: MatrixIndex) -> Option<()>;
-    fn get(&self, index: MatrixIndex) -> Option<&Self::Entry>;
+    fn get(&self, index: MatrixIndex) -> Option<Self::Entry>;
     fn get_mut(&mut self, index: MatrixIndex) -> Option<&mut Self::Entry>;
     fn get_disjoint_mut<const N: usize>(
         &mut self,
