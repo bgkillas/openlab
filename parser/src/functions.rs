@@ -31,7 +31,7 @@ impl FromStr for Function {
     }
 }
 impl Function {
-    pub fn inputs(self) -> Range<u8> {
+    pub fn input_range(self) -> Range<u8> {
         match self {
             Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => {
                 2..3
@@ -39,6 +39,13 @@ impl Function {
             Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => {
                 1..2
             }
+            Self::Custom(_) => todo!(),
+        }
+    }
+    pub fn inputs(self) -> u8 {
+        match self {
+            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => 2,
+            Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => 1,
             Self::Custom(_) => todo!(),
         }
     }

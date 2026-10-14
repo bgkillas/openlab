@@ -13,8 +13,8 @@ pub type NumberBase = Complex<Float>;
 pub type NumberInner = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
 pub type Number = number::number::Number<NumberInner>;
 #[derive(Clone, Default, Debug)]
-pub struct Expression {
-    pub tokens: Box<[ExpressionToken]>,
+pub struct Expression<'a> {
+    pub tokens: Box<[ExpressionToken<'a>]>,
 }
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum Variable {
@@ -24,7 +24,8 @@ pub enum Variable {
     None,
 }
 #[derive(Clone, Debug)]
-pub enum ExpressionToken {
+pub enum ExpressionToken<'a> {
+    Block(Block<'a>),
     Number(Number),
     Variable(Variable),
     Function(Function),
@@ -38,10 +39,10 @@ pub struct Block<'a> {
 pub enum BlockToken<'a> {
     Block(Block<'a>),
     Function(&'a str, Block<'a>),
-    Expression(Expression),
+    Expression(Expression<'a>),
     Assignment(Variable, Box<[Self]>),
     Return(Box<[Self]>),
-    PrintExpression(Expression),
+    PrintExpression(Expression<'a>),
     PrintAssignment(Variable, Box<[Self]>),
     PrintReturn(Box<[Self]>),
     Last(Box<[Self]>),
@@ -76,13 +77,13 @@ impl<'a> Block<'a> {
         })
     }
 }
-struct State {
-    expression: Vec<ExpressionToken>,
+struct State<'a> {
+    expression: Vec<ExpressionToken<'a>>,
     operator_stack: Vec<Operator>,
     fn_inputs: Vec<u8>,
     no_input_left: bool,
 }
-impl Default for State {
+impl Default for State<'_> {
     fn default() -> Self {
         Self {
             expression: Vec::new(),
@@ -92,7 +93,7 @@ impl Default for State {
         }
     }
 }
-impl State {
+impl State<'_> {
     fn push_operator(&mut self, operator: Operator) {
         self.no_input_left = true;
         while let Some(top) = self.operator_stack.pop_if(|top| {
@@ -137,8 +138,8 @@ impl State {
         if let Some(&Operator::Function(fun)) = self.operator_stack.last() {
             self.operator_stack.pop();
             let inputs = self.fn_inputs.pop().unwrap();
-            if !fun.inputs().contains(&inputs) {
-                return Err(if fun.inputs().start < inputs {
+            if !fun.input_range().contains(&inputs) {
+                return Err(if fun.input_range().start < inputs {
                     ParseError::MissingInput
                 } else {
                     ParseError::TooMuchInput

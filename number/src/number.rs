@@ -2,7 +2,9 @@ use crate::matrix::dense::Matrix;
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::matrix::MatrixImpl as _;
 use crate::traits::number::NumberImpl;
+use crate::traits::pow::{Pow, Root};
 use core::iter;
+use core::ops::{Add, Div, Mul, Sub};
 use std::debug_assert_matches;
 #[derive(Clone, PartialEq, Debug)]
 pub enum Number<C>
@@ -55,6 +57,30 @@ pub enum NumberIndex {
     Matrix(MatrixIndex),
     List(usize, Box<Self>),
 }
+macro_rules! optional_operator {
+    ($tr:ident, $f:ident, $fa:ident) => {
+        impl<C: NumberImpl> $tr<Self> for Number<C> {
+            type Output = Option<Self>;
+            fn $f(mut self, rhs: Self) -> Self::Output {
+                self.$fa(&rhs)?;
+                Some(self)
+            }
+        }
+        impl<C: NumberImpl> $tr<&Self> for Number<C> {
+            type Output = Option<Self>;
+            fn $f(mut self, rhs: &Self) -> Self::Output {
+                self.$fa(rhs)?;
+                Some(self)
+            }
+        }
+    };
+}
+optional_operator!(Add, add, add_assign);
+optional_operator!(Sub, sub, sub_assign);
+optional_operator!(Mul, mul, mul_assign);
+optional_operator!(Div, div, div_assign);
+optional_operator!(Pow, pow, pow_assign);
+optional_operator!(Root, root, root_assign);
 impl<C: NumberImpl> Number<C> {
     pub fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.size() != rhs.size() {

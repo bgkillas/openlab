@@ -58,12 +58,22 @@ impl Operator {
             }
         })
     }
-    pub fn inputs(self) -> Range<u8> {
+    pub fn input_range(self) -> Range<u8> {
         match self {
             Self::Negate | Self::Factorial | Self::SubFactorial | Self::Identity => 1..2,
             Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => {
                 2..3
             }
+            Self::Function(f) => f.input_range(),
+            Self::LeftBracket(_) => {
+                unreachable!()
+            }
+        }
+    }
+    pub fn inputs(self) -> u8 {
+        match self {
+            Self::Negate | Self::Factorial | Self::SubFactorial | Self::Identity => 1,
+            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => 2,
             Self::Function(f) => f.inputs(),
             Self::LeftBracket(_) => {
                 unreachable!()

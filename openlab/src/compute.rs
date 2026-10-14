@@ -1,4 +1,5 @@
 use parser::functions::Function;
+use parser::number::traits::pow::{Pow as _, Root as _};
 use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, ParseError};
 #[derive(Debug, Default)]
 struct ComputeInner {
@@ -36,42 +37,32 @@ impl ComputeInner {
         for token in &expr.tokens {
             match token {
                 ExpressionToken::Number(num) => self.stack.push(num.clone()),
-                &ExpressionToken::Function(fun) => self.fun(fun),
+                &ExpressionToken::Function(fun) => self.fun(fun)?,
                 ExpressionToken::Variable(_) => todo!(),
                 ExpressionToken::Skip(_) => todo!(),
+                ExpressionToken::Block(_) => todo!(),
             }
         }
         let res = self.stack.pop();
         debug_assert_eq!(self.stack, []);
         res
     }
-    fn fun(&mut self, fun: Function) {
-        match fun {
-            Function::Add => {
-                let last = self.stack.pop().unwrap();
-                self.stack.last_mut().unwrap().add_assign(&last);
+    fn fun(&mut self, fun: Function) -> Option<()> {
+        let num = {
+            let mut inputs = self
+                .stack
+                .drain(self.stack.len() - fun.inputs().strict_cast::<usize>()..);
+            match fun {
+                Function::Add => (inputs.next().unwrap() + inputs.next().unwrap())?,
+                Function::Sub => (inputs.next().unwrap() - inputs.next().unwrap())?,
+                Function::Mul => (inputs.next().unwrap() * inputs.next().unwrap())?,
+                Function::Div => (inputs.next().unwrap() / inputs.next().unwrap())?,
+                Function::Pow => inputs.next().unwrap().pow(&inputs.next().unwrap())?,
+                Function::Root => inputs.next().unwrap().root(&inputs.next().unwrap())?,
+                _ => todo!(),
             }
-            Function::Sub => {
-                let last = self.stack.pop().unwrap();
-                self.stack.last_mut().unwrap().sub_assign(&last);
-            }
-            Function::Mul => {
-                let last = self.stack.pop().unwrap();
-                self.stack.last_mut().unwrap().mul_assign(&last);
-            }
-            Function::Div => {
-                let last = self.stack.pop().unwrap();
-                self.stack.last_mut().unwrap().div_assign(&last);
-            }
-            Function::Pow => {
-                let last = self.stack.pop().unwrap();
-                self.stack.last_mut().unwrap().pow_assign(&last);
-            }
-            Function::Root => {
-                let last = self.stack.pop().unwrap();
-                self.stack.last_mut().unwrap().root_assign(&last);
-            }
-            _ => todo!(),
-        }
+        };
+        self.stack.push(num);
+        Some(())
     }
 }
