@@ -104,6 +104,81 @@ impl<C: NumberImpl> NegAssign for Number<C> {
     }
 }
 impl<C: NumberImpl> Number<C> {
+    pub fn complex(&self) -> Option<C> {
+        if let Self::Complex(c) = self {
+            Some(*c)
+        } else {
+            None
+        }
+    }
+    pub fn matrix(&self) -> Option<&Matrix<C>> {
+        if let Self::Matrix(m) = self {
+            Some(m)
+        } else {
+            None
+        }
+    }
+    pub fn matrix_mut(&mut self) -> Option<&mut Matrix<C>> {
+        if let Self::Matrix(m) = self {
+            Some(m)
+        } else {
+            None
+        }
+    }
+    pub fn component_wise<F>(mut self, rhs: &Self, f: F) -> Option<Self>
+    where
+        F: FnMut(C, C) -> Option<C>,
+    {
+        self.component_wise_mut(rhs, f)?;
+        Some(self)
+    }
+    pub fn component_wise_mut<F>(&mut self, rhs: &Self, mut f: F) -> Option<()>
+    where
+        F: FnMut(C, C) -> Option<C>,
+    {
+        match (self.size(), rhs.size()) {
+            (sizea, sizeb) if sizea == sizeb => {
+                for (a, b) in self
+                    .iter_mut()
+                    .zip(rhs.iter())
+                    .map(|((_, a), (_, b))| (a, b))
+                {
+                    *a = f(*a, b)?;
+                }
+                Some(())
+            }
+            (_, NumberDimension::Complex) => {
+                let b = rhs.complex()?;
+                for (_, a) in self.iter_mut() {
+                    *a = f(*a, b)?;
+                }
+                Some(())
+            }
+            (NumberDimension::Matrix(ma), NumberDimension::Matrix(mb))
+                if ma.width == mb.width && mb.height == 1 =>
+            {
+                let vec = rhs.matrix()?.entries();
+                for row in self.matrix_mut()?.rows_mut() {
+                    for (a, &b) in row.iter_mut().zip(vec) {
+                        *a = f(*a, b)?;
+                    }
+                }
+                Some(())
+            }
+            (NumberDimension::Matrix(ma), NumberDimension::Matrix(mb))
+                if ma.height == mb.height && mb.width == 1 =>
+            {
+                let vec = rhs.matrix()?.entries();
+                for (row, &b) in self.matrix_mut()?.rows_mut().zip(vec) {
+                    for a in row.iter_mut() {
+                        *a = f(*a, b)?;
+                    }
+                }
+                Some(())
+            }
+            _ => None,
+        }
+    }
     pub fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.size() != rhs.size() {
             return None;

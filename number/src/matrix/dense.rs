@@ -164,6 +164,16 @@ impl<C: NumberImpl> Matrix<C> {
             .map(|i| self.entries()[i])
             .chunks(self.height())
     }
+    pub fn rows_mut(&mut self) -> impl Iterator<Item = &mut [C]> {
+        let width = self.width();
+        self.entries_mut().chunks_exact_mut(width)
+    }
+    /*pub fn cols_mut(&mut self) -> IntoChunks<impl Iterator<Item = &mut C>> {
+        (0..self.width())
+            .flat_map(|c| (c..self.size()).step_by(self.width()))
+            .map(|i| self.entries_mut()[i])
+            .chunks(self.height())
+    }*/
     pub fn entries_mut(&mut self) -> &mut [C] {
         if let Some(ptr) = self.entries {
             unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), self.size()) }
