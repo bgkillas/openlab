@@ -60,7 +60,7 @@ macro_rules! define_float {
                 Some(RealImpl::root(self, rhs))
             }
         }
-        impl<T: Into<$ty> + NotType<Self> + NotType<u8> + NotType<f16>> From<T> for Real<$ty> {
+        impl<T: Into<$ty> + NotType<Self> + NotType<u8> + NotType<f32>> From<T> for Real<$ty> {
             fn from(value: T) -> Self {
                 Self(<T as Into<$ty>>::into(value))
             }
@@ -119,7 +119,6 @@ macro_rules! define_float {
         }
     };
 }
-define_float!(f16);
 define_float!(f32);
 define_float!(f64);
 impl<T: RealImpl> BaseImpl for Real<T> {}
@@ -128,8 +127,8 @@ impl<T: RealImpl> From<u8> for Real<T> {
         Self(T::from(value))
     }
 }
-impl<T: RealImpl> From<f16> for Real<T> {
-    fn from(value: f16) -> Self {
+impl<T: RealImpl> From<f32> for Real<T> {
+    fn from(value: f32) -> Self {
         Self(T::from(value))
     }
 }

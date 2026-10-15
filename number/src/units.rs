@@ -1,4 +1,5 @@
 use crate::assign_neg;
+use crate::float::complex::Complex;
 use crate::traits::assign::NegAssign;
 use crate::traits::base::Operations;
 use crate::traits::cast::Cast;
@@ -10,9 +11,6 @@ use std::simd::{Simd, SimdElement};
 pub trait SimdTrait<const N: usize>: SimdElement + RealImpl {
     type Simd: Copy + Clone + Debug + PartialEq + Default + Operations + From<[Self; N]>;
 }
-impl<const N: usize> SimdTrait<N> for f16 {
-    type Simd = Simd<Self, N>;
-}
 impl<const N: usize> SimdTrait<N> for f32 {
     type Simd = Simd<Self, N>;
 }
@@ -20,7 +18,7 @@ impl<const N: usize> SimdTrait<N> for f64 {
     type Simd = Simd<Self, N>;
 }
 #[derive(Copy, Clone, PartialEq, Default)]
-pub struct NumberUnits<T: NumberImpl, U: SimdTrait<N> = f32, const N: usize = 8> {
+pub struct NumberUnits<T: NumberImpl = Complex, U: SimdTrait<N> = f32, const N: usize = 8> {
     pub number: T,
     pub units: Units<U, N>,
 }

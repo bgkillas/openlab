@@ -17,9 +17,8 @@ macro_rules! impl_float_to_float {
         )+
     }
 }
-impl_float_to_float!(f16 => f16, f32, f64);
-impl_float_to_float!(f32 => f16, f32, f64);
-impl_float_to_float!(f64 => f16, f32, f64);
+impl_float_to_float!(f32 => f32, f64);
+impl_float_to_float!(f64 => f32, f64);
 impl<R: Cast<T> + RealImpl, T> Cast<T> for Real<R> {
     fn cast(self) -> T {
         self.0.cast()
