@@ -3,7 +3,7 @@ use enum_map::{Enum, EnumMap};
 use number::float::real::Real;
 use number::traits::complex::ComplexImpl as _;
 use number::units::Units;
-pub type UnitType = f16;
+pub type UnitType = f32;
 pub const UNIT_COUNT: usize = 8;
 #[derive(Enum, Debug)]
 pub enum Unit {

@@ -1,5 +1,4 @@
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
-use crate::traits::complex::ComplexImpl;
 use crate::traits::matrix::MatrixImpl as _;
 use crate::traits::number::NumberImpl;
 use alloc::alloc::Global;
@@ -204,12 +203,12 @@ impl<C: NumberImpl> Matrix<C> {
         }
     }
 }
-impl<C: NumberImpl + ComplexImpl, D: Into<C::Real>, const N: usize, const M: usize>
-    From<[[D; N]; M]> for Matrix<C>
+impl<C: NumberImpl, D: Into<C::NumberReal>, const N: usize, const M: usize> From<[[D; N]; M]>
+    for Matrix<C>
 {
     fn from(value: [[D; N]; M]) -> Self {
         let dim = MatrixDimension::new(N.strict_cast(), M.strict_cast());
         let mut vals = value.into_iter().flatten();
-        Self::new_with(dim, |_, _| C::new_real_from(vals.next().unwrap()))
+        Self::new_with(dim, |_, _| C::from_real(vals.next().unwrap().into()))
     }
 }

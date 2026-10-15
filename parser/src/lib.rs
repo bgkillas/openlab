@@ -1,4 +1,3 @@
-#![feature(f16)]
 pub mod functions;
 mod operators;
 pub mod parser;

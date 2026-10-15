@@ -5,6 +5,6 @@ use crate::parser::Block;
 #[test]
 fn number() {
     let s = "0<4>121";
-    let block = Block::parse(s).unwrap();
-    println!("{block:?}")
+    let _ = Block::parse(s).unwrap();
+    //TODO
 }

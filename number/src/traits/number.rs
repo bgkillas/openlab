@@ -16,6 +16,7 @@ pub trait NumberImpl:
         Self::parse_number(2, 1, 0)
     }
     fn try_real(self) -> Option<Self::NumberReal>;
+    fn from_real(real: Self::NumberReal) -> Self;
     fn is_zero(self) -> bool {
         self == Self::zero()
     }
@@ -66,6 +67,9 @@ impl<T: RealImpl> NumberImpl for Complex<T> {
     fn try_real(self) -> Option<Self::NumberReal> {
         self.im.is_zero().then_some(self.re)
     }
+    fn from_real(real: Self::NumberReal) -> Self {
+        Self::new_real(real)
+    }
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {
         Self::new_real(Real::<T>::parse_number(base, whole, part))
     }
@@ -92,6 +96,9 @@ impl<T: RealImpl> NumberImpl for Real<T> {
     type NumberReal = Self;
     fn try_real(self) -> Option<Self::NumberReal> {
         Some(self)
+    }
+    fn from_real(real: Self::NumberReal) -> Self {
+        real
     }
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {
         Self(T::parse_number(base, whole, part))

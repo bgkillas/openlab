@@ -5,7 +5,32 @@ use crate::traits::assign::NegAssign;
 use crate::traits::matrix::MatrixImpl;
 use crate::traits::number::NumberImpl;
 use core::mem;
+use core::ops::Mul;
 use core::ops::Neg;
+impl<C: NumberImpl> Mul<Self> for &Matrix<C> {
+    type Output = Option<Matrix<C>>;
+    fn mul(self, rhs: Self) -> Self::Output {
+        if self.width() != rhs.height() {
+            return None;
+        }
+        let dim = MatrixDimension {
+            width: rhs.dimension.width,
+            height: self.dimension.height,
+        };
+        let mut new = Matrix::<C>::new_uninit(dim);
+        let mut vec: Vec<C> = Vec::with_capacity(rhs.height());
+        for (i, col) in rhs.cols().into_iter().enumerate() {
+            vec.extend(col);
+            for (j, row) in self.rows().enumerate() {
+                let index = MatrixIndex::new(j.strict_cast(), i.strict_cast());
+                let entry = C::sum(row.iter().zip(vec.iter()).map(|(a, b)| a.mul(*b)))?;
+                new.get_uninit(index).unwrap().write(entry);
+            }
+            vec.clear();
+        }
+        Some(new)
+    }
+}
 impl<C: NumberImpl> MatrixImpl for Matrix<C> {
     type Entry = C;
     fn add_assign(&mut self, rhs: &Self) -> Option<()> {
@@ -27,25 +52,7 @@ impl<C: NumberImpl> MatrixImpl for Matrix<C> {
         Some(())
     }
     fn mul_assign(&mut self, rhs: &Self) -> Option<()> {
-        if self.width() != rhs.height() {
-            return None;
-        }
-        let dim = MatrixDimension {
-            width: rhs.dimension.width,
-            height: self.dimension.height,
-        };
-        let mut new = Self::new_uninit(dim);
-        let mut vec: Vec<C> = Vec::with_capacity(rhs.height());
-        for (i, col) in rhs.cols().into_iter().enumerate() {
-            vec.extend(col);
-            for (j, row) in self.rows().enumerate() {
-                let index = MatrixIndex::new(j.strict_cast(), i.strict_cast());
-                let entry = C::sum(row.iter().zip(vec.iter()).map(|(a, b)| a.mul(*b)))?;
-                new.get_uninit(index).unwrap().write(entry);
-            }
-            vec.clear();
-        }
-        *self = new;
+        *self = self.mul(rhs)?;
         Some(())
     }
     fn transpose(&mut self) {

@@ -20,7 +20,7 @@ impl<const N: usize> SimdTrait<N> for f64 {
     type Simd = Simd<Self, N>;
 }
 #[derive(Copy, Clone, PartialEq, Default)]
-pub struct NumberUnits<T: NumberImpl, U: SimdTrait<N>, const N: usize> {
+pub struct NumberUnits<T: NumberImpl, U: SimdTrait<N> = f32, const N: usize = 8> {
     pub number: T,
     pub units: Units<U, N>,
 }
@@ -39,7 +39,7 @@ impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Debug for NumberUnits<T, U,
     }
 }
 #[derive(Copy, Clone, Debug, PartialEq, Default)]
-pub struct Units<U: SimdTrait<N>, const N: usize> {
+pub struct Units<U: SimdTrait<N> = f32, const N: usize = 8> {
     pub units: U::Simd,
 }
 impl<U: SimdTrait<N>, const N: usize> From<[U; N]> for Units<U, N> {
@@ -61,6 +61,9 @@ impl<U: SimdTrait<N>, const N: usize> NumberImpl for Units<U, N> {
     type NumberReal = U;
     fn try_real(self) -> Option<Self::NumberReal> {
         None
+    }
+    fn from_real(_: Self::NumberReal) -> Self {
+        unreachable!()
     }
     fn parse_number(_: u8, _: u128, _: u128) -> Self {
         Self::default()
@@ -93,6 +96,9 @@ where
     type NumberReal = T::NumberReal;
     fn try_real(self) -> Option<Self::NumberReal> {
         self.number.try_real()
+    }
+    fn from_real(real: Self::NumberReal) -> Self {
+        Self::new(T::from_real(real), Units::default())
     }
     fn parse_number(base: u8, whole: u128, part: u128) -> Self {
         Self {

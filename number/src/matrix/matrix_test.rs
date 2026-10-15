@@ -4,6 +4,7 @@ use crate::matrix::dense::Matrix;
 use crate::matrix::size::MatrixDimension;
 use crate::traits::complex::ComplexImpl;
 use crate::traits::matrix::MatrixImpl;
+use crate::units::NumberUnits;
 #[test]
 pub fn matrix_allocation() {
     let dim1 = MatrixDimension::new(3, 5);
@@ -12,7 +13,7 @@ pub fn matrix_allocation() {
         Complex::new(Real(i.row as f64), Real(i.col as f64))
     });
     for (i, val) in matrix.iter_mut() {
-        assert_eq!(Complex::new(Real(i.row as f64), Real(i.col as f64)), val);
+        assert_eq!(Complex::new(Real(i.row as f64), Real(i.col as f64)), *val);
     }
     matrix.new_dimension_with(dim2, |_, i| {
         Complex::new(Real(-(i.row as f64)), Real(-(i.col as f64)))
@@ -28,9 +29,12 @@ pub fn matrix_allocation() {
 }
 #[test]
 pub fn matrix_multiplication() {
-    let mut a: Matrix<Complex<f64>> = Matrix::from([[1, 2, 4, 2], [7, 4, 3, 2], [2, 7, 5, 2]]);
-    let b: Matrix<Complex<f64>> = Matrix::from([[1, 5, 4], [7, 4, 7], [2, 7, 1], [7, 5, 3]]);
-    let c: Matrix<Complex<f64>> = Matrix::from([[37, 51, 28], [55, 82, 65], [75, 83, 68]]);
+    let mut a: Matrix<NumberUnits<Complex<f64>>> =
+        Matrix::from([[1, 2, 4, 2], [7, 4, 3, 2], [2, 7, 5, 2]]);
+    let b: Matrix<NumberUnits<Complex<f64>>> =
+        Matrix::from([[1, 5, 4], [7, 4, 7], [2, 7, 1], [7, 5, 3]]);
+    let c: Matrix<NumberUnits<Complex<f64>>> =
+        Matrix::from([[37, 51, 28], [55, 82, 65], [75, 83, 68]]);
     a.mul_assign(&b);
     assert_eq!(a, c);
 }

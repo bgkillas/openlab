@@ -38,6 +38,9 @@ macro_rules! define_float {
             fn try_real(self) -> Option<Self::NumberReal> {
                 Some(self)
             }
+            fn from_real(real: Self::NumberReal) -> Self {
+                real
+            }
             fn add(self, rhs: Self) -> Option<Self> {
                 Some(self + rhs)
             }

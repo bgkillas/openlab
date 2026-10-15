@@ -145,14 +145,12 @@ impl<C: NumberImpl> Number<C> {
                 {
                     *a = f(*a, b)?;
                 }
-                Some(())
             }
             (_, NumberDimension::Complex) => {
                 let b = rhs.complex()?;
                 for (_, a) in self.iter_mut() {
                     *a = f(*a, b)?;
                 }
-                Some(())
             }
             (NumberDimension::Matrix(ma), NumberDimension::Matrix(mb))
                 if ma.width == mb.width && mb.height == 1 =>
@@ -163,7 +161,6 @@ impl<C: NumberImpl> Number<C> {
                         *a = f(*a, b)?;
                     }
                 }
-                Some(())
             }
             (NumberDimension::Matrix(ma), NumberDimension::Matrix(mb))
                 if ma.height == mb.height && mb.width == 1 =>
@@ -174,10 +171,10 @@ impl<C: NumberImpl> Number<C> {
                         *a = f(*a, b)?;
                     }
                 }
-                Some(())
             }
-            _ => None,
+            _ => return None,
         }
+        Some(())
     }
     pub fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.size() != rhs.size() {
