@@ -17,6 +17,11 @@ pub struct Complex<T: RealImpl = f64> {
     pub re: Real<T>,
     pub im: Real<T>,
 }
+impl<T: RealImpl> From<T> for Complex<T> {
+    fn from(value: T) -> Self {
+        Self::new_real(Real(value))
+    }
+}
 impl<T: RealImpl> Debug for Complex<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match (self.re.is_zero(), self.im.is_zero()) {

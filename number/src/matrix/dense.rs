@@ -50,16 +50,16 @@ impl<C: NumberImpl> Matrix<C> {
     pub fn new(dim: MatrixDimension) -> Self {
         Self::new_with(dim, |_, _| C::default())
     }
-    pub(crate) fn new_uninit(dim: MatrixDimension) -> Self {
-        let mut ret = Self::default();
-        if dim.size() == 0 {
-            return ret;
+    pub(crate) fn new_uninit(dimension: MatrixDimension) -> Self {
+        if dimension.size() == 0 {
+            return Self::default();
         }
-        let layout = Layout::array::<C>(dim.size()).unwrap();
+        let layout = Layout::array::<C>(dimension.size()).unwrap();
         let ptr = Global.allocate(layout).unwrap();
-        ret.entries = Some(ptr.cast());
-        ret.dimension = dim;
-        ret
+        Self {
+            entries: Some(ptr.cast()),
+            dimension,
+        }
     }
     pub fn new_with<F>(dim: MatrixDimension, mut fun: F) -> Self
     where

@@ -1,11 +1,10 @@
 use crate::parser::{Float, NumberBase, NumberInner};
-use enum_map::{Enum, EnumMap};
 use number::float::real::Real;
 use number::traits::complex::ComplexImpl as _;
 use number::units::Units;
 pub type UnitType = f32;
 pub const UNIT_COUNT: usize = 8;
-#[derive(Enum, Debug)]
+#[derive(Debug)]
 pub enum Unit {
     Second = 0,
     Metre = 1,
@@ -16,7 +15,7 @@ pub enum Unit {
     Candela = 6,
     Usd = 7,
 }
-#[derive(Enum, Debug)]
+#[derive(Debug)]
 pub enum Prefix {
     Quetta,
     Ronna,
@@ -123,22 +122,34 @@ impl Prefix {
     }
 }
 impl Unit {
+    pub fn entry(self) -> usize {
+        match self {
+            Self::Second => 0,
+            Self::Metre => 1,
+            Self::Gram => 2,
+            Self::Ampere => 3,
+            Self::Kelvin => 4,
+            Self::Mole => 5,
+            Self::Candela => 6,
+            Self::Usd => 7,
+        }
+    }
     pub fn parse(s: &str) -> Option<NumberInner> {
         let (prefix, postfix) = Prefix::parse(s);
-        let mut units: EnumMap<Self, UnitType> = EnumMap::default();
+        let mut units = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = units.units.as_mut_array();
         match postfix {
-            "s" | "second" => units[Self::Second] = 1.0,
-            "m" | "metre" | "meter" => units[Self::Metre] = 1.0,
-            "g" | "gram" => units[Self::Gram] = 1.0,
-            "A" | "ampere" => units[Self::Ampere] = 1.0,
-            "K" | "kelvin" => units[Self::Kelvin] = 1.0,
-            "mol" | "mole" => units[Self::Mole] = 1.0,
-            "cd" | "candela" => units[Self::Candela] = 1.0,
-            "USD" => units[Self::Usd] = 1.0,
+            "s" | "second" => arr[Self::Second.entry()] = 1.0,
+            "m" | "metre" | "meter" => arr[Self::Metre.entry()] = 1.0,
+            "g" | "gram" => arr[Self::Gram.entry()] = 1.0,
+            "A" | "ampere" => arr[Self::Ampere.entry()] = 1.0,
+            "K" | "kelvin" => arr[Self::Kelvin.entry()] = 1.0,
+            "mol" | "mole" => arr[Self::Mole.entry()] = 1.0,
+            "cd" | "candela" => arr[Self::Candela.entry()] = 1.0,
+            "USD" => arr[Self::Usd.entry()] = 1.0,
             _ => return None,
         }
         let number = NumberBase::new_real(Real(prefix.multiplier()));
-        let units_val = Units::from(units.into_array());
-        Some(NumberInner::new(number, units_val))
+        Some(NumberInner::new(number, units))
     }
 }

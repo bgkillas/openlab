@@ -26,7 +26,6 @@ parser = {path = "parser"}
 replace_with = {version = "0.1.8", default-features = false, features = ["std"]}
 itertools = {version = "0.15.0", default-features = false, features = ["use_std"]}
 unicode-segmentation = {version = "1.13.3", default-features = false, features = []}
-enum-map = {version = "3.1.0", default-features = false, features = ["derive"]}
 criterion = "0.8.2"
 
 [workspace.lints.clippy]

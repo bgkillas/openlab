@@ -1,3 +1,4 @@
+#![feature(portable_simd)]
 pub mod functions;
 mod operators;
 pub mod parser;
