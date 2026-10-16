@@ -1,6 +1,7 @@
+use crate::parser::Float;
 use crate::units::{
-    AmountUnit, AngelUnit, CurrencyUnit, CurrentUnit, DistanceUnit, LuminousIntensityUnit,
-    MassUnit, TemperatureUnit, TimeUnit,
+    AmountUnit, AngelUnit, CurrencyUnit, CurrentUnit, Dimension, DistanceUnit,
+    LuminousIntensityUnit, MassUnit, TemperatureUnit, TimeUnit, UnitBucket as _,
 };
 use std::path::Path;
 #[derive(Clone, Copy)]
@@ -25,6 +26,18 @@ impl<'a> ParserOptions<'a> {
         Self {
             path,
             units: UnitOptions::default(),
+        }
+    }
+    pub fn get(self, dimension: Dimension) -> Option<Float> {
+        match dimension {
+            Dimension::Time => self.units.time.get(self),
+            Dimension::Distance => self.units.distance.get(self),
+            Dimension::Mass => self.units.mass.get(self),
+            Dimension::Current => self.units.current.get(self),
+            Dimension::Temperature => self.units.temperature.get(self),
+            Dimension::Amount => self.units.amount.get(self),
+            Dimension::LuminousIntensity => self.units.luminous_intensity.get(self),
+            Dimension::Currency => self.units.currency.get(self),
         }
     }
 }

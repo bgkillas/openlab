@@ -16,7 +16,7 @@ pub type UnitType = f32;
 pub const UNIT_COUNT: usize = 8;
 #[derive(Debug)]
 #[repr(u8)]
-pub enum Dimensions {
+pub enum Dimension {
     Time,
     Distance,
     Mass,
@@ -26,7 +26,7 @@ pub enum Dimensions {
     LuminousIntensity,
     Currency,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Unit {
     TimeUnit(TimeUnit),
     DistanceUnit(DistanceUnit),
@@ -310,6 +310,21 @@ pub enum BinaryPrefix {
     Robi,
     Quebi,
 }
+impl From<u8> for Dimension {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Self::Time,
+            1 => Self::Distance,
+            2 => Self::Mass,
+            3 => Self::Current,
+            4 => Self::Temperature,
+            5 => Self::Amount,
+            6 => Self::LuminousIntensity,
+            7 => Self::Currency,
+            _ => unreachable!(),
+        }
+    }
+}
 impl Prefix {
     pub fn multiplier(self) -> Float {
         match self {
@@ -438,11 +453,98 @@ impl BinaryPrefix {
         )
     }
 }
-pub trait UnitBucket: Sized {
+pub trait UnitBucket: Copy {
     fn parse(s: &str) -> Option<Self>;
+    fn units(self) -> Units<UnitType, UNIT_COUNT>;
     fn get(self, options: ParserOptions<'_>) -> Option<Float>;
+    fn get_scaled(self, options: ParserOptions<'_>) -> Option<Float> {
+        let mut float = self.get(options)?;
+        let units = self.units();
+        for (i, &u) in units.units.as_array().iter().enumerate() {
+            float /= options
+                .get(Dimension::from(u8::try_from(i).unwrap()))?
+                .powf(Float::from(u));
+        }
+        Some(float)
+    }
     fn to_short(self) -> &'static str;
     fn to_long(self) -> &'static str;
+}
+impl UnitBucket for Unit {
+    fn parse(s: &str) -> Option<Self> {
+        macro_rules! run {
+            ($($ident:ident,)*) => {
+                $(
+                    if let Some(unit) = $ident::parse(s) {
+                        return Some(Self::$ident(unit));
+                    }
+                )*
+            };
+        }
+        run!(
+            TimeUnit,
+            DistanceUnit,
+            MassUnit,
+            TemperatureUnit,
+            AmountUnit,
+            LuminousIntensityUnit,
+            CurrencyUnit,
+            AngelUnit,
+        );
+        None
+    }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        match self {
+            Self::TimeUnit(u) => u.units(),
+            Self::DistanceUnit(u) => u.units(),
+            Self::MassUnit(u) => u.units(),
+            Self::CurrentUnit(u) => u.units(),
+            Self::TemperatureUnit(u) => u.units(),
+            Self::AmountUnit(u) => u.units(),
+            Self::LuminousIntensityUnit(u) => u.units(),
+            Self::CurrencyUnit(u) => u.units(),
+            Self::AngelUnit(u) => u.units(),
+        }
+    }
+    fn get(self, options: ParserOptions<'_>) -> Option<Float> {
+        match self {
+            Self::TimeUnit(u) => u.get(options),
+            Self::DistanceUnit(u) => u.get(options),
+            Self::MassUnit(u) => u.get(options),
+            Self::CurrentUnit(u) => u.get(options),
+            Self::TemperatureUnit(u) => u.get(options),
+            Self::AmountUnit(u) => u.get(options),
+            Self::LuminousIntensityUnit(u) => u.get(options),
+            Self::CurrencyUnit(u) => u.get(options),
+            Self::AngelUnit(u) => u.get(options),
+        }
+    }
+    fn to_short(self) -> &'static str {
+        match self {
+            Self::TimeUnit(u) => u.to_short(),
+            Self::DistanceUnit(u) => u.to_short(),
+            Self::MassUnit(u) => u.to_short(),
+            Self::CurrentUnit(u) => u.to_short(),
+            Self::TemperatureUnit(u) => u.to_short(),
+            Self::AmountUnit(u) => u.to_short(),
+            Self::LuminousIntensityUnit(u) => u.to_short(),
+            Self::CurrencyUnit(u) => u.to_short(),
+            Self::AngelUnit(u) => u.to_short(),
+        }
+    }
+    fn to_long(self) -> &'static str {
+        match self {
+            Self::TimeUnit(u) => u.to_long(),
+            Self::DistanceUnit(u) => u.to_long(),
+            Self::MassUnit(u) => u.to_long(),
+            Self::CurrentUnit(u) => u.to_long(),
+            Self::TemperatureUnit(u) => u.to_long(),
+            Self::AmountUnit(u) => u.to_long(),
+            Self::LuminousIntensityUnit(u) => u.to_long(),
+            Self::CurrencyUnit(u) => u.to_long(),
+            Self::AngelUnit(u) => u.to_long(),
+        }
+    }
 }
 impl UnitBucket for TimeUnit {
     fn parse(s: &str) -> Option<Self> {
@@ -450,6 +552,12 @@ impl UnitBucket for TimeUnit {
             "second" | "s" => Self::Second,
             _ => return None,
         })
+    }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        let mut simd = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = simd.units.as_mut_array();
+        arr[Dimension::Time.discriminant()] = 1.0;
+        simd
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
@@ -504,6 +612,12 @@ impl UnitBucket for DistanceUnit {
             _ => return None,
         })
     }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        let mut simd = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = simd.units.as_mut_array();
+        arr[Dimension::Distance.discriminant()] = 1.0;
+        simd
+    }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
             Self::Planck => todo!(),
@@ -551,6 +665,12 @@ impl UnitBucket for MassUnit {
             _ => return None,
         })
     }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        let mut simd = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = simd.units.as_mut_array();
+        arr[Dimension::Mass.discriminant()] = 1.0;
+        simd
+    }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
             Self::ElectronVolt => todo!(),
@@ -585,12 +705,47 @@ impl UnitBucket for MassUnit {
         }
     }
 }
+impl UnitBucket for CurrentUnit {
+    fn parse(s: &str) -> Option<Self> {
+        Some(match s {
+            "ampere" | "A" => Self::Amperage,
+            _ => return None,
+        })
+    }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        let mut simd = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = simd.units.as_mut_array();
+        arr[Dimension::Current.discriminant()] = 1.0;
+        simd
+    }
+    fn get(self, _: ParserOptions<'_>) -> Option<Float> {
+        Some(match self {
+            Self::Amperage => todo!(),
+        })
+    }
+    fn to_short(self) -> &'static str {
+        match self {
+            Self::Amperage => todo!(),
+        }
+    }
+    fn to_long(self) -> &'static str {
+        match self {
+            Self::Amperage => todo!(),
+        }
+    }
+}
 impl UnitBucket for TemperatureUnit {
     fn parse(s: &str) -> Option<Self> {
         Some(match s {
             "kelvin" | "K" => Self::Kelvin,
             _ => return None,
         })
+    }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        let mut simd = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = simd.units.as_mut_array();
+        arr[Dimension::Temperature.discriminant()] = 1.0;
+        simd
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
@@ -624,6 +779,12 @@ impl UnitBucket for AmountUnit {
             _ => return None,
         })
     }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        let mut simd = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = simd.units.as_mut_array();
+        arr[Dimension::Amount.discriminant()] = 1.0;
+        simd
+    }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
             Self::Unit => todo!(),
@@ -655,6 +816,12 @@ impl UnitBucket for LuminousIntensityUnit {
             "candela" | "cd" => Self::Candela,
             _ => return None,
         })
+    }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        let mut simd = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = simd.units.as_mut_array();
+        arr[Dimension::LuminousIntensity.discriminant()] = 1.0;
+        simd
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
@@ -825,11 +992,17 @@ impl UnitBucket for CurrencyUnit {
             _ => return None,
         })
     }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        let mut simd = Units::<UnitType, UNIT_COUNT>::default();
+        let arr = simd.units.as_mut_array();
+        arr[Dimension::Currency.discriminant()] = 1.0;
+        simd
+    }
     fn get(self, options: ParserOptions<'_>) -> Option<Float> {
         if let Some(currency) = CURRENCY.lock().unwrap().as_ref() {
             return Some(currency[self.discriminant()]);
         }
-        let mut arr = [Float::one(); variant_count::<CurrencyUnit>()];
+        let mut arr = [Float::one(); variant_count::<Self>()];
         if let Some(dir) = options.path {
             let path = dir.join("currency.csv");
             if fs::metadata(&path).map_or(true, |a| {
@@ -854,7 +1027,7 @@ impl UnitBucket for CurrencyUnit {
                     .ok()?;
                 _ = file.write("USD,1\n".as_bytes());
                 if download_currency_rates(|code_temp, rate| {
-                    if let Some(unit) = CurrencyUnit::parse(code_temp) {
+                    if let Some(unit) = Self::parse(code_temp) {
                         _ = file.write(format!("{code_temp},{rate}\n").as_bytes());
                         arr[unit.discriminant()] = rate;
                     }
@@ -877,14 +1050,14 @@ impl UnitBucket for CurrencyUnit {
                     let Some((code_temp, rate)) = line.split_once(',') else {
                         continue;
                     };
-                    if let Some(unit) = CurrencyUnit::parse(code_temp) {
+                    if let Some(unit) = Self::parse(code_temp) {
                         arr[unit.discriminant()] = rate.parse().ok()?;
                     }
                 }
             }
         } else {
             download_currency_rates(|code_temp, rate| {
-                if let Some(unit) = CurrencyUnit::parse(code_temp) {
+                if let Some(unit) = Self::parse(code_temp) {
                     arr[unit.discriminant()] = rate;
                 }
             })?;
@@ -1057,6 +1230,9 @@ impl UnitBucket for AngelUnit {
             _ => return None,
         })
     }
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        Units::default()
+    }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
             Self::Rad => todo!(),
@@ -1079,59 +1255,15 @@ impl UnitBucket for AngelUnit {
         }
     }
 }
-impl Unit {
-    pub fn parse(s: &str) -> Option<Self> {
-        macro_rules! run {
-            ($($ident:ident,)*) => {
-                $(
-                    if let Some(unit) = $ident::parse(s) {
-                        return Some(Self::$ident(unit));
-                    }
-                )*
-            };
-        }
-        run!(
-            TimeUnit,
-            DistanceUnit,
-            MassUnit,
-            TemperatureUnit,
-            AmountUnit,
-            LuminousIntensityUnit,
-            CurrencyUnit,
-            AngelUnit,
-        );
-        None
-    }
-}
-impl Dimensions {
+impl Dimension {
     pub fn discriminant(self) -> usize {
         unsafe { core::mem::transmute::<Self, u8>(self) }.strict_cast()
     }
     pub fn parse(options: ParserOptions<'_>, s: &str) -> Option<NumberInner> {
         let (prefix, postfix) = Prefix::parse(s);
-        let mut units = Units::<UnitType, UNIT_COUNT>::default();
-        let arr = units.units.as_mut_array();
-        let mut mult = 1.0;
-        match postfix {
-            "s" | "second" => arr[Self::Time.discriminant()] = 1.0,
-            "m" | "metre" | "meter" => arr[Self::Distance.discriminant()] = 1.0,
-            "g" | "gram" => arr[Self::Mass.discriminant()] = 1.0,
-            "A" | "ampere" => arr[Self::Current.discriminant()] = 1.0,
-            "K" | "kelvin" => arr[Self::Temperature.discriminant()] = 1.0,
-            "mol" | "mole" => arr[Self::Amount.discriminant()] = 1.0,
-            "cd" | "candela" => arr[Self::LuminousIntensity.discriminant()] = 1.0,
-            //add option on how to store angels
-            "deg" | "degree" => mult = PI / 180.0,
-            "grad" | "gradian" => mult = PI / 200.0,
-            "rad" | "radian" => {}
-            _ if let Some(code) = CurrencyUnit::parse(postfix)
-                && let Some(m) = get_currency_rate(options, code) =>
-            {
-                arr[Self::Currency.discriminant()] = 1.0;
-                mult = m;
-            }
-            _ => return None,
-        }
+        let unit = Unit::parse(postfix)?;
+        let units = unit.units();
+        let mult = unit.get_scaled(options)?;
         let number = NumberBase::new_real(Real(mult * prefix.multiplier()));
         Some(NumberInner::new(number, units))
     }

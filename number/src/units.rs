@@ -37,6 +37,7 @@ impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Debug for NumberUnits<T, U,
     }
 }
 #[derive(Copy, Clone, Debug, PartialEq, Default)]
+#[repr(transparent)]
 pub struct Units<U: SimdTrait<N> = f32, const N: usize = 8> {
     pub units: U::Simd,
 }
