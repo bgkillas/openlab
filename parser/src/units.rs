@@ -266,6 +266,30 @@ pub enum AngelUnit {
 }
 #[derive(Debug)]
 pub enum Prefix {
+    None,
+    Metric(MetricPrefix),
+    Binary(BinaryPrefix),
+}
+impl Prefix {
+    pub fn multiplier(self) -> Float {
+        match self {
+            Self::None => 1.0,
+            Self::Metric(m) => m.multiplier(),
+            Self::Binary(b) => b.multiplier(),
+        }
+    }
+    pub fn parse(s: &str) -> (Self, &str) {
+        if let Some((pre, post)) = BinaryPrefix::parse(s) {
+            (Self::Binary(pre), post)
+        } else if let Some((pre, post)) = MetricPrefix::parse(s) {
+            (Self::Metric(pre), post)
+        } else {
+            (Self::None, s)
+        }
+    }
+}
+#[derive(Debug)]
+pub enum MetricPrefix {
     Quetta,
     Ronna,
     Yotta,
@@ -278,7 +302,6 @@ pub enum Prefix {
     Kilo,
     Hecto,
     Deca,
-    None,
     Deci,
     Centi,
     Milli,
@@ -292,7 +315,7 @@ pub enum Prefix {
     Ronto,
     Quecto,
 }
-impl Prefix {
+impl MetricPrefix {
     pub fn multiplier(self) -> Float {
         match self {
             Self::Quetta => 1e30,
@@ -307,7 +330,6 @@ impl Prefix {
             Self::Kilo => 1e3,
             Self::Hecto => 1e2,
             Self::Deca => 1e1,
-            Self::None => 1e0,
             Self::Deci => 1e-1,
             Self::Centi => 1e-2,
             Self::Milli => 1e-3,
@@ -322,22 +344,22 @@ impl Prefix {
             Self::Quecto => 1e-30,
         }
     }
-    pub fn parse(s: &str) -> (Self, &str) {
+    pub fn parse(s: &str) -> Option<(Self, &str)> {
         fn strip_or<'a>(s: &'a str, m1: &str, m2: &str) -> Option<&'a str> {
             s.strip_prefix(m1).or_else(|| s.strip_prefix(m2))
         }
         fn parse<'a, const N: usize>(
             s: &'a str,
-            ms: [(Prefix, &str, &str); N],
-        ) -> (Prefix, &'a str) {
+            ms: [(MetricPrefix, &str, &str); N],
+        ) -> Option<(MetricPrefix, &'a str)> {
             for (p, a, b) in ms {
                 if let Some(t) = strip_or(s, a, b)
                     && !t.is_empty()
                 {
-                    return (p, t);
+                    return Some((p, t));
                 }
             }
-            (Prefix::None, s)
+            None
         }
         parse(
             s,
@@ -372,7 +394,6 @@ impl Prefix {
 }
 #[derive(Debug)]
 pub enum BinaryPrefix {
-    None,
     Kibi,
     Mebi,
     Gibi,
@@ -387,7 +408,6 @@ pub enum BinaryPrefix {
 impl BinaryPrefix {
     pub fn multiplier(self) -> Float {
         match self {
-            Self::None => Float::powi(1024.0, 0),
             Self::Kibi => Float::powi(1024.0, 1),
             Self::Mebi => Float::powi(1024.0, 2),
             Self::Gibi => Float::powi(1024.0, 3),
@@ -400,22 +420,22 @@ impl BinaryPrefix {
             Self::Quebi => Float::powi(1024.0, 10),
         }
     }
-    pub fn parse(s: &str) -> (Self, &str) {
+    pub fn parse(s: &str) -> Option<(Self, &str)> {
         fn strip_or<'a>(s: &'a str, m1: &str, m2: &str) -> Option<&'a str> {
             s.strip_prefix(m1).or_else(|| s.strip_prefix(m2))
         }
         fn parse<'a, const N: usize>(
             s: &'a str,
             ms: [(BinaryPrefix, &str, &str); N],
-        ) -> (BinaryPrefix, &'a str) {
+        ) -> Option<(BinaryPrefix, &'a str)> {
             for (p, a, b) in ms {
                 if let Some(t) = strip_or(s, a, b)
                     && !t.is_empty()
                 {
-                    return (p, t);
+                    return Some((p, t));
                 }
             }
-            (BinaryPrefix::None, s)
+            None
         }
         parse(
             s,
