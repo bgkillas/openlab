@@ -17,14 +17,14 @@ pub const UNIT_COUNT: usize = 8;
 #[derive(Debug)]
 #[repr(u8)]
 pub enum Dimensions {
-    Time = 0,
-    Distance = 1,
-    Mass = 2,
-    Current = 3,
-    Temperature = 4,
-    Amount = 5,
-    LuminousIntensity = 6,
-    Currency = 7,
+    Time,
+    Distance,
+    Mass,
+    Current,
+    Temperature,
+    Amount,
+    LuminousIntensity,
+    Currency,
 }
 #[derive(Debug)]
 pub enum Unit {
@@ -36,21 +36,48 @@ pub enum Unit {
     Amount(AmountUnit),
     LuminousIntensity(LuminousIntensityUnit),
     Currency(CurrencyUnit),
+    Angel(AngelUnit),
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub enum TimeUnit {
+    Planck,
     #[default]
     Second,
+    Minute,
+    Hour,
+    Day,
+    Week,
+    ///30 days
+    Month,
+    ///365.25 days
+    Year,
+    Decade,
+    Century,
+    Millennium,
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub enum DistanceUnit {
+    Planck,
+    Inch,
+    Foot,
+    Yard,
     #[default]
     Metre,
+    Mile,
+    AstronomicalUnit,
+    LightYear,
+    Parsec,
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub enum MassUnit {
+    ElectronVolt,
+    Planck,
     #[default]
     Gram,
+    Ounce,
+    Pound,
+    Tonne,
+    Solar,
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub enum CurrentUnit {
@@ -61,11 +88,17 @@ pub enum CurrentUnit {
 pub enum TemperatureUnit {
     #[default]
     Kelvin,
+    Rankine,
+    Celsius,
+    Fahrenheit,
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub enum AmountUnit {
+    Unit,
     #[default]
     Mole,
+    Bit,
+    Byte,
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub enum LuminousIntensityUnit {
@@ -333,6 +366,70 @@ impl Prefix {
                 (Self::Yocto, "yocto", "y"),
                 (Self::Ronto, "ronto", "r"),
                 (Self::Quecto, "quecto", "q"),
+            ],
+        )
+    }
+}
+#[derive(Debug)]
+pub enum BinaryPrefix {
+    None,
+    Kibi,
+    Mebi,
+    Gibi,
+    Tebi,
+    Pebi,
+    Exbi,
+    Zebi,
+    Yobi,
+    Robi,
+    Quebi,
+}
+impl BinaryPrefix {
+    pub fn multiplier(self) -> Float {
+        match self {
+            Self::None => Float::powi(1024.0, 0),
+            Self::Kibi => Float::powi(1024.0, 1),
+            Self::Mebi => Float::powi(1024.0, 2),
+            Self::Gibi => Float::powi(1024.0, 3),
+            Self::Tebi => Float::powi(1024.0, 4),
+            Self::Pebi => Float::powi(1024.0, 5),
+            Self::Exbi => Float::powi(1024.0, 6),
+            Self::Zebi => Float::powi(1024.0, 7),
+            Self::Yobi => Float::powi(1024.0, 8),
+            Self::Robi => Float::powi(1024.0, 9),
+            Self::Quebi => Float::powi(1024.0, 10),
+        }
+    }
+    pub fn parse(s: &str) -> (Self, &str) {
+        fn strip_or<'a>(s: &'a str, m1: &str, m2: &str) -> Option<&'a str> {
+            s.strip_prefix(m1).or_else(|| s.strip_prefix(m2))
+        }
+        fn parse<'a, const N: usize>(
+            s: &'a str,
+            ms: [(BinaryPrefix, &str, &str); N],
+        ) -> (BinaryPrefix, &'a str) {
+            for (p, a, b) in ms {
+                if let Some(t) = strip_or(s, a, b)
+                    && !t.is_empty()
+                {
+                    return (p, t);
+                }
+            }
+            (BinaryPrefix::None, s)
+        }
+        parse(
+            s,
+            [
+                (Self::Kibi, "kibi", "Ki"),
+                (Self::Mebi, "mebi", "Mi"),
+                (Self::Gibi, "gibi", "Gi"),
+                (Self::Tebi, "tebi", "Ti"),
+                (Self::Pebi, "pebi", "Pi"),
+                (Self::Exbi, "exbi", "Ei"),
+                (Self::Zebi, "zebi", "Zi"),
+                (Self::Yobi, "yobi", "Yi"),
+                (Self::Robi, "robi", "Ri"),
+                (Self::Quebi, "quebi", "Qi"),
             ],
         )
     }
