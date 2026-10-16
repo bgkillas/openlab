@@ -1,6 +1,7 @@
 use crate::functions::Function;
 use crate::operators::{Bracket, Operator};
-use crate::units::{UNIT_COUNT, Unit, UnitType};
+use crate::options::ParserOptions;
+use crate::units::{Dimensions, UNIT_COUNT, UnitType};
 use core::iter::Peekable;
 use core::str::FromStr as _;
 use lexer::iter::LexerIter;
@@ -54,11 +55,14 @@ pub enum ParseError {
     LexerError,
 }
 impl<'a> Block<'a> {
-    pub fn parse(s: &'a str) -> Result<Self, ParseError> {
+    pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
         let mut tokens = LexerIter::new(s).peekable();
-        Self::parse_tokens(&mut tokens)
+        Self::parse_tokens(options, &mut tokens)
     }
-    pub fn parse_tokens(tokens: &mut Peekable<LexerIter<'a>>) -> Result<Self, ParseError> {
+    pub fn parse_tokens(
+        options: ParserOptions<'_>,
+        tokens: &mut Peekable<LexerIter<'a>>,
+    ) -> Result<Self, ParseError> {
         let mut blocks = Vec::new();
         while let Some(token) = tokens.peek() {
             let part = match token.token {
@@ -68,7 +72,7 @@ impl<'a> Block<'a> {
                 LexerToken::Word("mut") => todo!(),
                 LexerToken::Word("return") => todo!(),
                 LexerToken::LeftParenthesis => todo!(),
-                _ => BlockToken::parse_expression(tokens)?,
+                _ => BlockToken::parse_expression(options, tokens)?,
             };
             blocks.push(part);
         }
@@ -150,7 +154,10 @@ impl State<'_> {
     }
 }
 impl<'a> BlockToken<'a> {
-    pub fn parse_expression(tokens: &mut Peekable<LexerIter<'a>>) -> Result<Self, ParseError> {
+    pub fn parse_expression(
+        options: ParserOptions<'_>,
+        tokens: &mut Peekable<LexerIter<'a>>,
+    ) -> Result<Self, ParseError> {
         let mut state = State::default();
         let mut print = true;
         while let Some(token) = tokens.next() {
@@ -169,7 +176,7 @@ impl<'a> BlockToken<'a> {
                 LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
                     state.push_operator(Operator::Function(fun));
                 }
-                LexerToken::Word(str) if let Some(num) = Unit::parse(str) => {
+                LexerToken::Word(str) if let Some(num) = Dimensions::parse(options, str) => {
                     state.push_number(num);
                 }
                 t if let Some(op) = Operator::parse(state.no_input_left, t, tokens) => {

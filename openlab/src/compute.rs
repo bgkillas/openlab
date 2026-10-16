@@ -1,5 +1,6 @@
 use parser::functions::Function;
 use parser::number::traits::pow::{Pow as _, Root as _};
+use parser::options::ParserOptions;
 use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, ParseError};
 #[derive(Debug, Default)]
 struct ComputeInner {
@@ -11,9 +12,9 @@ pub struct Compute<'a> {
     inner: ComputeInner,
 }
 impl<'a> Compute<'a> {
-    pub fn parse(s: &'a str) -> Result<Self, ParseError> {
+    pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
         Ok(Self {
-            block: Block::parse(s)?,
+            block: Block::parse(options, s)?,
             inner: ComputeInner::default(),
         })
     }

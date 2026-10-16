@@ -7,6 +7,7 @@ repository.workspace = true
 
 [dependencies]
 openlab = {workspace = true}
+dirs = {workspace = true}
 
 [lints]
 workspace = true

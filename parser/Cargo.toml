@@ -8,6 +8,8 @@ repository.workspace = true
 [dependencies]
 lexer = {workspace = true}
 number = {workspace = true}
+reqwest = {workspace = true}
+jzon = {workspace = true}
 
 [lints]
 workspace = true
