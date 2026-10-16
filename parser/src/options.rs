@@ -1,6 +1,6 @@
 use crate::parser::Float;
 use crate::units::{
-    AmountUnit, AngelUnit, CurrencyUnit, CurrentUnit, Dimension, DistanceUnit,
+    AmountUnit, AngleUnit, CurrencyUnit, CurrentUnit, Dimension, DistanceUnit,
     LuminousIntensityUnit, MassUnit, TemperatureUnit, TimeUnit, UnitBucket as _,
 };
 use std::path::Path;
@@ -19,7 +19,7 @@ pub struct UnitOptions {
     pub amount: AmountUnit,
     pub luminous_intensity: LuminousIntensityUnit,
     pub currency: CurrencyUnit,
-    pub angel: AngelUnit,
+    pub angle: AngleUnit,
 }
 impl<'a> ParserOptions<'a> {
     pub fn new(path: Option<&'a Path>) -> Self {
@@ -38,6 +38,7 @@ impl<'a> ParserOptions<'a> {
             Dimension::Amount => self.units.amount.get(self),
             Dimension::LuminousIntensity => self.units.luminous_intensity.get(self),
             Dimension::Currency => self.units.currency.get(self),
+            Dimension::Angle => self.units.angle.get(self),
         }
     }
 }

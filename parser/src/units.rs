@@ -25,6 +25,7 @@ pub enum Dimension {
     Amount,
     LuminousIntensity,
     Currency,
+    Angle,
 }
 #[derive(Debug, Clone, Copy)]
 pub enum Unit {
@@ -36,7 +37,7 @@ pub enum Unit {
     AmountUnit(AmountUnit),
     LuminousIntensityUnit(LuminousIntensityUnit),
     CurrencyUnit(CurrencyUnit),
-    AngelUnit(AngelUnit),
+    AngleUnit(AngleUnit),
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub enum TimeUnit {
@@ -131,7 +132,7 @@ pub enum CurrencyUnit {
     IRR, LAK, SYP,
 }
 #[derive(Debug, Default, Clone, Copy)]
-pub enum AngelUnit {
+pub enum AngleUnit {
     #[default]
     Rad,
     Deg,
@@ -206,13 +207,17 @@ impl Prefix {
             Self::Binary(b) => b.multiplier(),
         }
     }
-    pub fn parse(s: &str) -> (Self, &str) {
-        if let Some((pre, post)) = BinaryPrefix::parse(s) {
-            (Self::Binary(pre), post)
-        } else if let Some((pre, post)) = MetricPrefix::parse(s) {
-            (Self::Metric(pre), post)
+    pub fn parse(s: &str) -> Option<(Self, Unit)> {
+        if let Some((pre, post)) = BinaryPrefix::parse(s)
+            && let Some(unit) = Unit::parse(post)
+        {
+            Some((Self::Binary(pre), unit))
+        } else if let Some((pre, post)) = MetricPrefix::parse(s)
+            && let Some(unit) = Unit::parse(post)
+        {
+            Some((Self::Metric(pre), unit))
         } else {
-            (Self::None, s)
+            Unit::parse(s).map(|u| (Self::None, u))
         }
     }
 }
@@ -362,7 +367,7 @@ impl UnitBucket for Unit {
             AmountUnit,
             LuminousIntensityUnit,
             CurrencyUnit,
-            AngelUnit,
+            AngleUnit,
         );
         None
     }
@@ -376,7 +381,20 @@ impl UnitBucket for Unit {
             Self::AmountUnit(u) => u.units(),
             Self::LuminousIntensityUnit(u) => u.units(),
             Self::CurrencyUnit(u) => u.units(),
-            Self::AngelUnit(u) => u.units(),
+            Self::AngleUnit(u) => u.units(),
+        }
+    }
+    fn get_scaled(self, options: ParserOptions<'_>) -> Option<Float> {
+        match self {
+            Self::TimeUnit(u) => u.get_scaled(options),
+            Self::DistanceUnit(u) => u.get_scaled(options),
+            Self::MassUnit(u) => u.get_scaled(options),
+            Self::CurrentUnit(u) => u.get_scaled(options),
+            Self::TemperatureUnit(u) => u.get_scaled(options),
+            Self::AmountUnit(u) => u.get_scaled(options),
+            Self::LuminousIntensityUnit(u) => u.get_scaled(options),
+            Self::CurrencyUnit(u) => u.get_scaled(options),
+            Self::AngleUnit(u) => u.get_scaled(options),
         }
     }
     fn get(self, options: ParserOptions<'_>) -> Option<Float> {
@@ -389,7 +407,7 @@ impl UnitBucket for Unit {
             Self::AmountUnit(u) => u.get(options),
             Self::LuminousIntensityUnit(u) => u.get(options),
             Self::CurrencyUnit(u) => u.get(options),
-            Self::AngelUnit(u) => u.get(options),
+            Self::AngleUnit(u) => u.get(options),
         }
     }
     fn to_short(self) -> &'static str {
@@ -402,7 +420,7 @@ impl UnitBucket for Unit {
             Self::AmountUnit(u) => u.to_short(),
             Self::LuminousIntensityUnit(u) => u.to_short(),
             Self::CurrencyUnit(u) => u.to_short(),
-            Self::AngelUnit(u) => u.to_short(),
+            Self::AngleUnit(u) => u.to_short(),
         }
     }
     fn to_long(self) -> &'static str {
@@ -415,7 +433,7 @@ impl UnitBucket for Unit {
             Self::AmountUnit(u) => u.to_long(),
             Self::LuminousIntensityUnit(u) => u.to_long(),
             Self::CurrencyUnit(u) => u.to_long(),
-            Self::AngelUnit(u) => u.to_long(),
+            Self::AngleUnit(u) => u.to_long(),
         }
     }
 }
@@ -497,7 +515,7 @@ impl UnitBucket for DistanceUnit {
             Self::Inch => todo!(),
             Self::Foot => todo!(),
             Self::Yard => todo!(),
-            Self::Metre => todo!(),
+            Self::Metre => 1.0,
             Self::Mile => todo!(),
             Self::AstronomicalUnit => todo!(),
             Self::LightYear => todo!(),
@@ -548,7 +566,7 @@ impl UnitBucket for MassUnit {
         Some(match self {
             Self::ElectronVolt => todo!(),
             Self::Planck => todo!(),
-            Self::Gram => todo!(),
+            Self::Gram => 1.0,
             Self::Ounce => todo!(),
             Self::Pound => todo!(),
             Self::Tonne => todo!(),
@@ -593,7 +611,7 @@ impl UnitBucket for CurrentUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::Amperage => todo!(),
+            Self::Amperage => 1.0,
         })
     }
     fn to_short(self) -> &'static str {
@@ -622,7 +640,7 @@ impl UnitBucket for TemperatureUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::Kelvin => todo!(),
+            Self::Kelvin => 1.0,
             Self::Rankine => todo!(),
             Self::Celsius => todo!(),
             Self::Fahrenheit => todo!(),
@@ -661,7 +679,7 @@ impl UnitBucket for AmountUnit {
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
             Self::Unit => todo!(),
-            Self::Mole => todo!(),
+            Self::Mole => 1.0,
             Self::Bit => todo!(),
             Self::Byte => todo!(),
         })
@@ -698,7 +716,7 @@ impl UnitBucket for LuminousIntensityUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::Candela => todo!(),
+            Self::Candela => 1.0,
         })
     }
     fn to_short(self) -> &'static str {
@@ -842,35 +860,42 @@ impl UnitBucket for CurrencyUnit {
         Self::to_short(self)
     }
 }
-impl UnitBucket for AngelUnit {
+impl UnitBucket for AngleUnit {
     fn parse(s: &str) -> Option<Self> {
         Some(match s {
             "radian" | "rad" => Self::Rad,
+            "degree" | "deg" => Self::Deg,
+            "gradian" | "grad" => Self::Grad,
             _ => return None,
         })
     }
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         Units::default()
     }
+    fn get_scaled(self, options: ParserOptions<'_>) -> Option<Float> {
+        let mut float = self.get(options)?;
+        float /= options.get(Dimension::Angle)?;
+        Some(float)
+    }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::Rad => todo!(),
-            Self::Deg => todo!(),
-            Self::Grad => todo!(),
+            Self::Rad => 1.0,
+            Self::Deg => PI / 180.0,
+            Self::Grad => PI / 200.0,
         })
     }
     fn to_short(self) -> &'static str {
         match self {
-            Self::Rad => todo!(),
-            Self::Deg => todo!(),
-            Self::Grad => todo!(),
+            Self::Rad => "rad",
+            Self::Deg => "deg",
+            Self::Grad => "grad",
         }
     }
     fn to_long(self) -> &'static str {
         match self {
-            Self::Rad => todo!(),
-            Self::Deg => todo!(),
-            Self::Grad => todo!(),
+            Self::Rad => "radian",
+            Self::Deg => "degree",
+            Self::Grad => "gradian",
         }
     }
 }
@@ -879,8 +904,7 @@ impl Dimension {
         unsafe { core::mem::transmute::<Self, u8>(self) }.strict_cast()
     }
     pub fn parse(options: ParserOptions<'_>, s: &str) -> Option<NumberInner> {
-        let (prefix, postfix) = Prefix::parse(s);
-        let unit = Unit::parse(postfix)?;
+        let (prefix, unit) = Prefix::parse(s)?;
         let units = unit.units();
         let mult = unit.get_scaled(options)?;
         let number = NumberBase::new_real(Real(mult * prefix.multiplier()));
