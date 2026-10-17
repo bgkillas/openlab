@@ -64,7 +64,7 @@ pub enum DistanceUnit {
     Foot,
     Yard,
     #[default]
-    Metre,
+    Meter,
     Mile,
     AstronomicalUnit,
     LightYear,
@@ -476,12 +476,17 @@ impl UnitBucket for TimeUnit {
     }
 }
 impl UnitBucket for DistanceUnit {
-    fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "metre" | "meter" | "m" => Self::Metre,
-            _ => return None,
-        })
-    }
+    units!(
+        "planck_length" | "l_P" => Self::Planck,
+        "inch" | "in" => Self::Inch,
+        "foot" | "ft" => Self::Foot,
+        "yard" | "yd" => Self::Yard,
+        "meter" | "m" => Self::Meter,
+        "mile" | "mi" => Self::Mile,
+        "astronomical_unit" | "au" => Self::AstronomicalUnit,
+        "light_year" | "ly" => Self::LightYear,
+        "parsec" | "pc" => Self::Parsec,
+    );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         let mut simd = Units::<UnitType, UNIT_COUNT>::default();
         let arr = simd.units.as_mut_array();
@@ -494,47 +499,24 @@ impl UnitBucket for DistanceUnit {
             Self::Inch => todo!(),
             Self::Foot => todo!(),
             Self::Yard => todo!(),
-            Self::Metre => 1.0,
+            Self::Meter => 1.0,
             Self::Mile => todo!(),
             Self::AstronomicalUnit => todo!(),
             Self::LightYear => todo!(),
             Self::Parsec => todo!(),
         })
-    }
-    fn to_short(self) -> &'static str {
-        match self {
-            Self::Planck => todo!(),
-            Self::Inch => todo!(),
-            Self::Foot => todo!(),
-            Self::Yard => todo!(),
-            Self::Metre => todo!(),
-            Self::Mile => todo!(),
-            Self::AstronomicalUnit => todo!(),
-            Self::LightYear => todo!(),
-            Self::Parsec => todo!(),
-        }
-    }
-    fn to_long(self) -> &'static str {
-        match self {
-            Self::Planck => todo!(),
-            Self::Inch => todo!(),
-            Self::Foot => todo!(),
-            Self::Yard => todo!(),
-            Self::Metre => todo!(),
-            Self::Mile => todo!(),
-            Self::AstronomicalUnit => todo!(),
-            Self::LightYear => todo!(),
-            Self::Parsec => todo!(),
-        }
     }
 }
 impl UnitBucket for MassUnit {
-    fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "gram" | "g" => Self::Gram,
-            _ => return None,
-        })
-    }
+    units!(
+        "electronvolt" | "eV" => Self::ElectronVolt,
+        "planck_mass" | "m_P" => Self::Planck,
+        "gram" | "g" => Self::Gram,
+        "ounce" | "oz" => Self::Ounce,
+        "pound" | "lb" => Self::Pound,
+        "tonne" | "t" => Self::Tonne,
+        "solar_mass" => Self::Solar,
+    );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         let mut simd = Units::<UnitType, UNIT_COUNT>::default();
         let arr = simd.units.as_mut_array();
@@ -552,36 +534,11 @@ impl UnitBucket for MassUnit {
             Self::Solar => todo!(),
         })
     }
-    fn to_short(self) -> &'static str {
-        match self {
-            Self::ElectronVolt => todo!(),
-            Self::Planck => todo!(),
-            Self::Gram => todo!(),
-            Self::Ounce => todo!(),
-            Self::Pound => todo!(),
-            Self::Tonne => todo!(),
-            Self::Solar => todo!(),
-        }
-    }
-    fn to_long(self) -> &'static str {
-        match self {
-            Self::ElectronVolt => todo!(),
-            Self::Planck => todo!(),
-            Self::Gram => todo!(),
-            Self::Ounce => todo!(),
-            Self::Pound => todo!(),
-            Self::Tonne => todo!(),
-            Self::Solar => todo!(),
-        }
-    }
 }
 impl UnitBucket for CurrentUnit {
-    fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "ampere" | "A" => Self::Amperage,
-            _ => return None,
-        })
-    }
+    units!(
+        "ampere" | "A" => Self::Amperage,
+    );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         let mut simd = Units::<UnitType, UNIT_COUNT>::default();
         let arr = simd.units.as_mut_array();
@@ -593,24 +550,15 @@ impl UnitBucket for CurrentUnit {
             Self::Amperage => 1.0,
         })
     }
-    fn to_short(self) -> &'static str {
-        match self {
-            Self::Amperage => todo!(),
-        }
-    }
-    fn to_long(self) -> &'static str {
-        match self {
-            Self::Amperage => todo!(),
-        }
-    }
 }
 impl UnitBucket for TemperatureUnit {
-    fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "kelvin" | "K" => Self::Kelvin,
-            _ => return None,
-        })
-    }
+    units!(
+        "planck_temperature" | "T_P" => Self::Planck,
+        "kelvin" | "K" => Self::Kelvin,
+        "rankine" | "R" => Self::Rankine,
+        "celsius" | "C" => Self::Celsius,
+        "fahrenheit" | "F" => Self::Fahrenheit,
+    );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         let mut simd = Units::<UnitType, UNIT_COUNT>::default();
         let arr = simd.units.as_mut_array();
@@ -626,32 +574,14 @@ impl UnitBucket for TemperatureUnit {
             Self::Fahrenheit => todo!(),
         })
     }
-    fn to_short(self) -> &'static str {
-        match self {
-            Self::Planck => todo!(),
-            Self::Kelvin => todo!(),
-            Self::Rankine => todo!(),
-            Self::Celsius => todo!(),
-            Self::Fahrenheit => todo!(),
-        }
-    }
-    fn to_long(self) -> &'static str {
-        match self {
-            Self::Planck => todo!(),
-            Self::Kelvin => todo!(),
-            Self::Rankine => todo!(),
-            Self::Celsius => todo!(),
-            Self::Fahrenheit => todo!(),
-        }
-    }
 }
 impl UnitBucket for AmountUnit {
-    fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "mole" | "mol" => Self::Mole,
-            _ => return None,
-        })
-    }
+    units!(
+        "unit" | "u" => Self::Unit,
+        "mole" | "mol" => Self::Mole,
+        "bit" | "b" => Self::Bit,
+        "byte" | "B" => Self::Byte,
+    );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         let mut simd = Units::<UnitType, UNIT_COUNT>::default();
         let arr = simd.units.as_mut_array();
@@ -666,30 +596,11 @@ impl UnitBucket for AmountUnit {
             Self::Byte => todo!(),
         })
     }
-    fn to_short(self) -> &'static str {
-        match self {
-            Self::Unit => todo!(),
-            Self::Mole => todo!(),
-            Self::Bit => todo!(),
-            Self::Byte => todo!(),
-        }
-    }
-    fn to_long(self) -> &'static str {
-        match self {
-            Self::Unit => todo!(),
-            Self::Mole => todo!(),
-            Self::Bit => todo!(),
-            Self::Byte => todo!(),
-        }
-    }
 }
 impl UnitBucket for LuminousIntensityUnit {
-    fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "candela" | "cd" => Self::Candela,
-            _ => return None,
-        })
-    }
+    units!(
+        "candela" | "cd" => Self::Candela,
+    );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         let mut simd = Units::<UnitType, UNIT_COUNT>::default();
         let arr = simd.units.as_mut_array();
@@ -700,16 +611,6 @@ impl UnitBucket for LuminousIntensityUnit {
         Some(match self {
             Self::Candela => 1.0,
         })
-    }
-    fn to_short(self) -> &'static str {
-        match self {
-            Self::Candela => todo!(),
-        }
-    }
-    fn to_long(self) -> &'static str {
-        match self {
-            Self::Candela => todo!(),
-        }
     }
 }
 impl UnitBucket for CurrencyUnit {
@@ -843,14 +744,11 @@ impl UnitBucket for CurrencyUnit {
     }
 }
 impl UnitBucket for AngleUnit {
-    fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "radian" | "rad" => Self::Rad,
-            "degree" | "deg" => Self::Deg,
-            "gradian" | "grad" => Self::Grad,
-            _ => return None,
-        })
-    }
+    units!(
+        "radian" | "rad" => Self::Rad,
+        "degree" | "deg" => Self::Deg,
+        "gradian" | "grad" => Self::Grad,
+    );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         Units::default()
     }
@@ -865,20 +763,6 @@ impl UnitBucket for AngleUnit {
         let mut float = self.get(options)?;
         float /= options.get(Dimension::Angle)?;
         Some(float)
-    }
-    fn to_short(self) -> &'static str {
-        match self {
-            Self::Rad => "rad",
-            Self::Deg => "deg",
-            Self::Grad => "grad",
-        }
-    }
-    fn to_long(self) -> &'static str {
-        match self {
-            Self::Rad => "radian",
-            Self::Deg => "degree",
-            Self::Grad => "gradian",
-        }
     }
 }
 impl Dimension {
