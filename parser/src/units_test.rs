@@ -1,31 +1,49 @@
-use crate::units::{
-    AmountUnit, AngleUnit, BinaryPrefix, CurrencyUnit, CurrentUnit, DistanceUnit,
-    LuminousIntensityUnit, MassUnit, MetricPrefix, Prefix, TemperatureUnit, TimeUnit, UnitBucket,
-};
+use crate::units::{BinaryPrefix, Length, MetricPrefix, Prefix, Unit, UnitBucket};
 use core::mem::{transmute_copy, variant_count};
 #[test]
 fn unit_conversion() {
-    convert::<TimeUnit>();
-    convert::<DistanceUnit>();
-    convert::<MassUnit>();
-    convert::<CurrentUnit>();
-    convert::<TemperatureUnit>();
-    convert::<AmountUnit>();
-    convert::<LuminousIntensityUnit>();
-    convert::<CurrencyUnit>();
-    convert::<AngleUnit>();
+    let time = std::time::Instant::now();
+    convert(Unit::TimeUnit);
+    convert(Unit::DistanceUnit);
+    convert(Unit::MassUnit);
+    convert(Unit::CurrentUnit);
+    convert(Unit::TemperatureUnit);
+    convert(Unit::AmountUnit);
+    convert(Unit::LuminousIntensityUnit);
+    convert(Unit::CurrencyUnit);
+    convert(Unit::AngleUnit);
+    println!("{}", time.elapsed().as_nanos());
 }
-fn convert<E: UnitBucket>() {
+fn convert<E: UnitBucket, F: Fn(E) -> Unit>(f: F) {
     for e in iter::<E>() {
-        assert_eq!(Some(e), E::parse(e.to_short()));
-        assert_eq!(Some(e), E::parse(e.to_long()));
-        //assert_eq!(Some(e), Prefix::parse(e.to_short()));
-        //assert_eq!(Some(e), Prefix::parse(e.to_long()));
-        for e in iter::<BinaryPrefix>() {
-            todo!()
-        }
-        for e in iter::<MetricPrefix>() {
-            todo!()
+        for l in iter::<Length>() {
+            assert_eq!(Some(e), E::parse(e.str(l)), "{}", e.str(l));
+            assert_eq!(
+                Some((Prefix::None, f(e))),
+                Prefix::parse(e.str(l)),
+                "{}",
+                e.str(l)
+            );
+            for pl in iter::<Length>() {
+                for p in iter::<BinaryPrefix>() {
+                    assert_eq!(
+                        Some((Prefix::Binary(p), f(e))),
+                        Prefix::parse(format!("{}{}", p.str(pl), e.str(l)).as_str()),
+                        "{}{}",
+                        p.str(pl),
+                        e.str(l)
+                    );
+                }
+                for p in iter::<MetricPrefix>() {
+                    assert_eq!(
+                        Some((Prefix::Metric(p), f(e))),
+                        Prefix::parse(format!("{}{}", p.str(pl), e.str(l)).as_str()),
+                        "{}{}",
+                        p.str(pl),
+                        e.str(l)
+                    );
+                }
+            }
         }
     }
 }

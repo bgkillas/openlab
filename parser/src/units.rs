@@ -235,15 +235,19 @@ impl Prefix {
         }
     }
 }
-fn strip_or<'a>(s: &'a str, m1: &str, m2: &str) -> Option<&'a str> {
-    s.strip_prefix(m1).or_else(|| s.strip_prefix(m2))
-}
 fn prefix_parse<T, const N: usize>(s: &str, ms: [T; N]) -> Option<(T, &str)>
 where
     T: UnitBucket,
 {
     for p in ms {
-        if let Some(t) = strip_or(s, p.to_long(), p.to_short())
+        if let Some(t) = s.strip_prefix(p.to_long())
+            && !t.is_empty()
+        {
+            return Some((p, t));
+        }
+    }
+    for p in ms {
+        if let Some(t) = s.strip_prefix(p.to_short())
             && !t.is_empty()
         {
             return Some((p, t));
@@ -393,6 +397,12 @@ impl BinaryPrefix {
         )
     }
 }
+#[derive(Clone, Copy)]
+#[repr(u8)]
+pub enum Length {
+    Long,
+    Short,
+}
 pub trait UnitBucket: Copy + PartialEq + Debug {
     fn parse(s: &str) -> Option<Self>;
     fn units(self) -> Units<UnitType, UNIT_COUNT>;
@@ -409,6 +419,12 @@ pub trait UnitBucket: Copy + PartialEq + Debug {
     }
     fn to_short(self) -> &'static str;
     fn to_long(self) -> &'static str;
+    fn str(self, length: Length) -> &'static str {
+        match length {
+            Length::Long => self.to_long(),
+            Length::Short => self.to_short(),
+        }
+    }
 }
 impl UnitBucket for Unit {
     fn parse(s: &str) -> Option<Self> {
@@ -425,6 +441,7 @@ impl UnitBucket for Unit {
             TimeUnit,
             DistanceUnit,
             MassUnit,
+            CurrentUnit,
             TemperatureUnit,
             AmountUnit,
             LuminousIntensityUnit,
@@ -503,7 +520,7 @@ impl UnitBucket for TimeUnit {
     units!(
         "planck_time" | "t_P" => Self::Planck,
         "second" | "s" => Self::Second,
-        "minute" | "min" => Self::Minute,
+        "minute" => Self::Minute,
         "hour" => Self::Hour,
         "day" => Self::Day,
         "week" => Self::Week,
@@ -574,7 +591,7 @@ impl UnitBucket for MassUnit {
         "gram" | "g" => Self::Gram,
         "ounce" | "oz" => Self::Ounce,
         "pound" | "lb" => Self::Pound,
-        "tonne" | "t" => Self::Tonne,
+        "tonne" => Self::Tonne,
         "solar_mass" => Self::Solar,
     );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
@@ -637,7 +654,7 @@ impl UnitBucket for TemperatureUnit {
 }
 impl UnitBucket for AmountUnit {
     units!(
-        "unit" | "u" => Self::Unit,
+        "unit" => Self::Unit,
         "mole" | "mol" => Self::Mole,
         "bit" | "b" => Self::Bit,
         "byte" | "B" => Self::Byte,
