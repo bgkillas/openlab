@@ -128,7 +128,9 @@ impl<'a> LexerIter<'a> {
                 let start = self.cursor;
                 self.until(|s| {
                     s.trim().is_empty()
-                        || (s.is_ascii() && s.chars().next().unwrap().is_ascii_punctuation())
+                        || (s.is_ascii()
+                            && s.chars().next().unwrap().is_ascii_punctuation()
+                            && s != "_")
                 });
                 LexerToken::Word(&self.source[start..self.cursor])
             }

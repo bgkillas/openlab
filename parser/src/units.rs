@@ -5,6 +5,7 @@ use number::float::real::Real;
 use number::traits::complex::ComplexImpl as _;
 use number::traits::number::NumberImpl as _;
 use number::units::Units;
+use parser_macros::units;
 use reqwest::blocking;
 use std::fs;
 use std::fs::OpenOptions;
@@ -48,7 +49,7 @@ pub enum TimeUnit {
     Hour,
     Day,
     Week,
-    ///30 days
+    ///year / 12
     Month,
     ///365.25 days
     Year,
@@ -87,6 +88,7 @@ pub enum CurrentUnit {
 }
 #[derive(Debug, Default, Clone, Copy)]
 pub enum TemperatureUnit {
+    Planck,
     #[default]
     Kelvin,
     Rankine,
@@ -384,19 +386,6 @@ impl UnitBucket for Unit {
             Self::AngleUnit(u) => u.units(),
         }
     }
-    fn get_scaled(self, options: ParserOptions<'_>) -> Option<Float> {
-        match self {
-            Self::TimeUnit(u) => u.get_scaled(options),
-            Self::DistanceUnit(u) => u.get_scaled(options),
-            Self::MassUnit(u) => u.get_scaled(options),
-            Self::CurrentUnit(u) => u.get_scaled(options),
-            Self::TemperatureUnit(u) => u.get_scaled(options),
-            Self::AmountUnit(u) => u.get_scaled(options),
-            Self::LuminousIntensityUnit(u) => u.get_scaled(options),
-            Self::CurrencyUnit(u) => u.get_scaled(options),
-            Self::AngleUnit(u) => u.get_scaled(options),
-        }
-    }
     fn get(self, options: ParserOptions<'_>) -> Option<Float> {
         match self {
             Self::TimeUnit(u) => u.get(options),
@@ -408,6 +397,19 @@ impl UnitBucket for Unit {
             Self::LuminousIntensityUnit(u) => u.get(options),
             Self::CurrencyUnit(u) => u.get(options),
             Self::AngleUnit(u) => u.get(options),
+        }
+    }
+    fn get_scaled(self, options: ParserOptions<'_>) -> Option<Float> {
+        match self {
+            Self::TimeUnit(u) => u.get_scaled(options),
+            Self::DistanceUnit(u) => u.get_scaled(options),
+            Self::MassUnit(u) => u.get_scaled(options),
+            Self::CurrentUnit(u) => u.get_scaled(options),
+            Self::TemperatureUnit(u) => u.get_scaled(options),
+            Self::AmountUnit(u) => u.get_scaled(options),
+            Self::LuminousIntensityUnit(u) => u.get_scaled(options),
+            Self::CurrencyUnit(u) => u.get_scaled(options),
+            Self::AngleUnit(u) => u.get_scaled(options),
         }
     }
     fn to_short(self) -> &'static str {
@@ -438,12 +440,19 @@ impl UnitBucket for Unit {
     }
 }
 impl UnitBucket for TimeUnit {
-    fn parse(s: &str) -> Option<Self> {
-        Some(match s {
-            "second" | "s" => Self::Second,
-            _ => return None,
-        })
-    }
+    units!(
+        "planck_time" | "t_P" => Self::Planck,
+        "second" | "s" => Self::Second,
+        "minute" | "min" => Self::Minute,
+        "hour" => Self::Hour,
+        "day" => Self::Day,
+        "week" => Self::Week,
+        "month" => Self::Month,
+        "year" => Self::Year,
+        "decade" => Self::Decade,
+        "century" => Self::Century,
+        "millennium" => Self::Millennium,
+    );
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         let mut simd = Units::<UnitType, UNIT_COUNT>::default();
         let arr = simd.units.as_mut_array();
@@ -452,48 +461,18 @@ impl UnitBucket for TimeUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::Planck => todo!(),
+            Self::Planck => 5.39124760e-44,
             Self::Second => 1.0,
             Self::Minute => 60.0,
-            Self::Hour => 3600.0,
-            Self::Day => todo!(),
-            Self::Week => todo!(),
-            Self::Month => todo!(),
-            Self::Year => todo!(),
-            Self::Decade => todo!(),
-            Self::Century => todo!(),
-            Self::Millennium => todo!(),
+            Self::Hour => 60.0 * 60.0,
+            Self::Day => 24.0 * 60.0 * 60.0,
+            Self::Week => 7.0 * 24.0 * 60.0 * 60.0,
+            Self::Month => 365.25 / 12.0 * 24.0 * 60.0 * 60.0,
+            Self::Year => 365.25 * 24.0 * 60.0 * 60.0,
+            Self::Decade => 10.0 * 365.25 * 24.0 * 60.0 * 60.0,
+            Self::Century => 100.0 * 365.25 * 24.0 * 60.0 * 60.0,
+            Self::Millennium => 1000.0 * 365.25 * 24.0 * 60.0 * 60.0,
         })
-    }
-    fn to_short(self) -> &'static str {
-        match self {
-            Self::Planck => todo!(),
-            Self::Second => todo!(),
-            Self::Minute => todo!(),
-            Self::Hour => todo!(),
-            Self::Day => todo!(),
-            Self::Week => todo!(),
-            Self::Month => todo!(),
-            Self::Year => todo!(),
-            Self::Decade => todo!(),
-            Self::Century => todo!(),
-            Self::Millennium => todo!(),
-        }
-    }
-    fn to_long(self) -> &'static str {
-        match self {
-            Self::Planck => todo!(),
-            Self::Second => todo!(),
-            Self::Minute => todo!(),
-            Self::Hour => todo!(),
-            Self::Day => todo!(),
-            Self::Week => todo!(),
-            Self::Month => todo!(),
-            Self::Year => todo!(),
-            Self::Decade => todo!(),
-            Self::Century => todo!(),
-            Self::Millennium => todo!(),
-        }
     }
 }
 impl UnitBucket for DistanceUnit {
@@ -640,6 +619,7 @@ impl UnitBucket for TemperatureUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
+            Self::Planck => todo!(),
             Self::Kelvin => 1.0,
             Self::Rankine => todo!(),
             Self::Celsius => todo!(),
@@ -648,6 +628,7 @@ impl UnitBucket for TemperatureUnit {
     }
     fn to_short(self) -> &'static str {
         match self {
+            Self::Planck => todo!(),
             Self::Kelvin => todo!(),
             Self::Rankine => todo!(),
             Self::Celsius => todo!(),
@@ -656,6 +637,7 @@ impl UnitBucket for TemperatureUnit {
     }
     fn to_long(self) -> &'static str {
         match self {
+            Self::Planck => todo!(),
             Self::Kelvin => todo!(),
             Self::Rankine => todo!(),
             Self::Celsius => todo!(),
@@ -872,17 +854,17 @@ impl UnitBucket for AngleUnit {
     fn units(self) -> Units<UnitType, UNIT_COUNT> {
         Units::default()
     }
-    fn get_scaled(self, options: ParserOptions<'_>) -> Option<Float> {
-        let mut float = self.get(options)?;
-        float /= options.get(Dimension::Angle)?;
-        Some(float)
-    }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
             Self::Rad => 1.0,
             Self::Deg => PI / 180.0,
             Self::Grad => PI / 200.0,
         })
+    }
+    fn get_scaled(self, options: ParserOptions<'_>) -> Option<Float> {
+        let mut float = self.get(options)?;
+        float /= options.get(Dimension::Angle)?;
+        Some(float)
     }
     fn to_short(self) -> &'static str {
         match self {

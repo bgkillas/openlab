@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+parser_macros = {workspace = true}
 lexer = {workspace = true}
 number = {workspace = true}
 reqwest = {workspace = true}
