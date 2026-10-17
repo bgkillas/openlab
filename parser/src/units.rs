@@ -1,6 +1,7 @@
 use crate::options::ParserOptions;
 use crate::parser::{Float, NumberBase, NumberInner};
 use core::f64::consts::PI;
+use core::fmt::Debug;
 use number::float::real::Real;
 use number::traits::complex::ComplexImpl as _;
 use number::traits::number::NumberImpl as _;
@@ -28,7 +29,7 @@ pub enum Dimension {
     Currency,
     Angle,
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Unit {
     TimeUnit(TimeUnit),
     DistanceUnit(DistanceUnit),
@@ -40,7 +41,8 @@ pub enum Unit {
     CurrencyUnit(CurrencyUnit),
     AngleUnit(AngleUnit),
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum TimeUnit {
     Planck,
     #[default]
@@ -57,7 +59,8 @@ pub enum TimeUnit {
     Century,
     Millennium,
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum DistanceUnit {
     Planck,
     Inch,
@@ -70,7 +73,8 @@ pub enum DistanceUnit {
     LightYear,
     Parsec,
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum MassUnit {
     ElectronVolt,
     Planck,
@@ -81,12 +85,14 @@ pub enum MassUnit {
     Tonne,
     Solar,
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum CurrentUnit {
     #[default]
     Amperage,
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum TemperatureUnit {
     Planck,
     #[default]
@@ -95,7 +101,8 @@ pub enum TemperatureUnit {
     Celsius,
     Fahrenheit,
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum AmountUnit {
     Unit,
     #[default]
@@ -103,12 +110,13 @@ pub enum AmountUnit {
     Bit,
     Byte,
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum LuminousIntensityUnit {
     #[default]
     Candela,
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 #[repr(u8)]
 #[rustfmt::skip]
 pub enum CurrencyUnit {
@@ -133,20 +141,23 @@ pub enum CurrencyUnit {
     VES, VUV, WST, XCD, XCG, XPF, YER, ZMW,
     IRR, LAK, SYP,
 }
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum AngleUnit {
     #[default]
     Rad,
     Deg,
     Grad,
 }
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum Prefix {
+    #[default]
     None,
     Metric(MetricPrefix),
     Binary(BinaryPrefix),
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum MetricPrefix {
     Quetta,
     Ronna,
@@ -173,7 +184,8 @@ pub enum MetricPrefix {
     Ronto,
     Quecto,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum BinaryPrefix {
     Kibi,
     Mebi,
@@ -202,19 +214,19 @@ impl From<u8> for Dimension {
     }
 }
 impl Prefix {
-    pub fn multiplier(self) -> Float {
+    pub fn get(self, options: ParserOptions<'_>) -> Option<Float> {
         match self {
-            Self::None => 1.0,
-            Self::Metric(m) => m.multiplier(),
-            Self::Binary(b) => b.multiplier(),
+            Self::None => Some(1.0),
+            Self::Metric(m) => m.get(options),
+            Self::Binary(b) => b.get(options),
         }
     }
     pub fn parse(s: &str) -> Option<(Self, Unit)> {
-        if let Some((pre, post)) = BinaryPrefix::parse(s)
+        if let Some((pre, post)) = BinaryPrefix::parse_prefix(s)
             && let Some(unit) = Unit::parse(post)
         {
             Some((Self::Binary(pre), unit))
-        } else if let Some((pre, post)) = MetricPrefix::parse(s)
+        } else if let Some((pre, post)) = MetricPrefix::parse_prefix(s)
             && let Some(unit) = Unit::parse(post)
         {
             Some((Self::Metric(pre), unit))
@@ -226,12 +238,12 @@ impl Prefix {
 fn strip_or<'a>(s: &'a str, m1: &str, m2: &str) -> Option<&'a str> {
     s.strip_prefix(m1).or_else(|| s.strip_prefix(m2))
 }
-fn prefix_parse<'a, T, const N: usize>(
-    s: &'a str,
-    ms: [(T, &str, &str); N],
-) -> Option<(T, &'a str)> {
-    for (p, a, b) in ms {
-        if let Some(t) = strip_or(s, a, b)
+fn prefix_parse<T, const N: usize>(s: &str, ms: [T; N]) -> Option<(T, &str)>
+where
+    T: UnitBucket,
+{
+    for p in ms {
+        if let Some(t) = strip_or(s, p.to_long(), p.to_short())
             && !t.is_empty()
         {
             return Some((p, t));
@@ -239,9 +251,38 @@ fn prefix_parse<'a, T, const N: usize>(
     }
     None
 }
-impl MetricPrefix {
-    pub fn multiplier(self) -> Float {
-        match self {
+impl UnitBucket for MetricPrefix {
+    units!(
+        "quetta" | "Q" => Self::Quetta,
+        "ronna" | "R" => Self::Ronna,
+        "yotta" | "Y" => Self::Yotta,
+        "zetta" | "Z" => Self::Zetta,
+        "exa" | "E" => Self::Exa,
+        "peta" | "P" => Self::Peta,
+        "tera" | "T" => Self::Tera,
+        "giga" | "G" => Self::Giga,
+        "mega" | "M" => Self::Mega,
+        "kilo" | "k" => Self::Kilo,
+        "hecto" | "h" => Self::Hecto,
+        "deca" | "da" => Self::Deca,
+        "deci" | "d" => Self::Deci,
+        "centi" | "c" => Self::Centi,
+        "milli" | "m" => Self::Milli,
+        "micro" | "μ" => Self::Micro,
+        "nano" | "n" => Self::Nano,
+        "pico" | "p" => Self::Pico,
+        "femto" | "f" => Self::Femto,
+        "atto" | "a" => Self::Atto,
+        "zepto" | "z" => Self::Zepto,
+        "yocto" | "y" => Self::Yocto,
+        "ronto" | "r" => Self::Ronto,
+        "quecto" | "q" => Self::Quecto,
+    );
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        Units::default()
+    }
+    fn get(self, _: ParserOptions<'_>) -> Option<Float> {
+        Some(match self {
             Self::Quetta => 1e30,
             Self::Ronna => 1e27,
             Self::Yotta => 1e24,
@@ -266,43 +307,60 @@ impl MetricPrefix {
             Self::Yocto => 1e-24,
             Self::Ronto => 1e-27,
             Self::Quecto => 1e-30,
-        }
+        })
     }
-    pub fn parse(s: &str) -> Option<(Self, &str)> {
+}
+impl MetricPrefix {
+    pub fn parse_prefix(s: &str) -> Option<(Self, &str)> {
         prefix_parse(
             s,
             [
-                (Self::Quetta, "quetta", "Q"),
-                (Self::Ronna, "ronna", "R"),
-                (Self::Yotta, "yotta", "Y"),
-                (Self::Zetta, "zetta", "Z"),
-                (Self::Exa, "exa", "E"),
-                (Self::Peta, "peta", "P"),
-                (Self::Tera, "tera", "T"),
-                (Self::Giga, "giga", "G"),
-                (Self::Mega, "mega", "M"),
-                (Self::Kilo, "kilo", "k"),
-                (Self::Hecto, "hecto", "h"),
-                (Self::Deca, "deca", "da"),
-                (Self::Deci, "deci", "d"),
-                (Self::Centi, "centi", "c"),
-                (Self::Milli, "milli", "m"),
-                (Self::Micro, "micro", "μ"),
-                (Self::Nano, "nano", "n"),
-                (Self::Pico, "pico", "p"),
-                (Self::Femto, "femto", "f"),
-                (Self::Atto, "atto", "a"),
-                (Self::Zepto, "zepto", "z"),
-                (Self::Yocto, "yocto", "y"),
-                (Self::Ronto, "ronto", "r"),
-                (Self::Quecto, "quecto", "q"),
+                Self::Quetta,
+                Self::Ronna,
+                Self::Yotta,
+                Self::Zetta,
+                Self::Exa,
+                Self::Peta,
+                Self::Tera,
+                Self::Giga,
+                Self::Mega,
+                Self::Kilo,
+                Self::Hecto,
+                Self::Deca,
+                Self::Deci,
+                Self::Centi,
+                Self::Milli,
+                Self::Micro,
+                Self::Nano,
+                Self::Pico,
+                Self::Femto,
+                Self::Atto,
+                Self::Zepto,
+                Self::Yocto,
+                Self::Ronto,
+                Self::Quecto,
             ],
         )
     }
 }
-impl BinaryPrefix {
-    pub fn multiplier(self) -> Float {
-        match self {
+impl UnitBucket for BinaryPrefix {
+    units!(
+        "kibi" | "Ki" => Self::Kibi,
+        "mebi" | "Mi" => Self::Mebi,
+        "gibi" | "Gi" => Self::Gibi,
+        "tebi" | "Ti" => Self::Tebi,
+        "pebi" | "Pi" => Self::Pebi,
+        "exbi" | "Ei" => Self::Exbi,
+        "zebi" | "Zi" => Self::Zebi,
+        "yobi" | "Yi" => Self::Yobi,
+        "robi" | "Ri" => Self::Robi,
+        "quebi" | "Qi" => Self::Quebi,
+    );
+    fn units(self) -> Units<UnitType, UNIT_COUNT> {
+        Units::default()
+    }
+    fn get(self, _: ParserOptions<'_>) -> Option<Float> {
+        Some(match self {
             Self::Kibi => Float::powi(1024.0, 1),
             Self::Mebi => Float::powi(1024.0, 2),
             Self::Gibi => Float::powi(1024.0, 3),
@@ -313,27 +371,29 @@ impl BinaryPrefix {
             Self::Yobi => Float::powi(1024.0, 8),
             Self::Robi => Float::powi(1024.0, 9),
             Self::Quebi => Float::powi(1024.0, 10),
-        }
+        })
     }
-    pub fn parse(s: &str) -> Option<(Self, &str)> {
+}
+impl BinaryPrefix {
+    pub fn parse_prefix(s: &str) -> Option<(Self, &str)> {
         prefix_parse(
             s,
             [
-                (Self::Kibi, "kibi", "Ki"),
-                (Self::Mebi, "mebi", "Mi"),
-                (Self::Gibi, "gibi", "Gi"),
-                (Self::Tebi, "tebi", "Ti"),
-                (Self::Pebi, "pebi", "Pi"),
-                (Self::Exbi, "exbi", "Ei"),
-                (Self::Zebi, "zebi", "Zi"),
-                (Self::Yobi, "yobi", "Yi"),
-                (Self::Robi, "robi", "Ri"),
-                (Self::Quebi, "quebi", "Qi"),
+                Self::Kibi,
+                Self::Mebi,
+                Self::Gibi,
+                Self::Tebi,
+                Self::Pebi,
+                Self::Exbi,
+                Self::Zebi,
+                Self::Yobi,
+                Self::Robi,
+                Self::Quebi,
             ],
         )
     }
 }
-pub trait UnitBucket: Copy {
+pub trait UnitBucket: Copy + PartialEq + Debug {
     fn parse(s: &str) -> Option<Self>;
     fn units(self) -> Units<UnitType, UNIT_COUNT>;
     fn get(self, options: ParserOptions<'_>) -> Option<Float>;
@@ -773,7 +833,7 @@ impl Dimension {
         let (prefix, unit) = Prefix::parse(s)?;
         let units = unit.units();
         let mult = unit.get_scaled(options)?;
-        let number = NumberBase::new_real(Real(mult * prefix.multiplier()));
+        let number = NumberBase::new_real(Real(mult * prefix.get(options)?));
         Some(NumberInner::new(number, units))
     }
 }

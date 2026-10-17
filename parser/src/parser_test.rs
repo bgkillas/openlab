@@ -1,3 +1,4 @@
+use crate::options::ParserOptions;
 use crate::parser::Block;
 //fn foo(a: M, b: C) -> (M, C) {
 //    return (a, b);
@@ -5,6 +6,7 @@ use crate::parser::Block;
 #[test]
 fn number() {
     let s = "0<4>121";
-    let _ = Block::parse(s).unwrap();
+    let options = ParserOptions::new(None);
+    let _ = Block::parse(options, s).unwrap();
     //TODO
 }
