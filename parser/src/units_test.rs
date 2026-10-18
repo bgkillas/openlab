@@ -2,7 +2,6 @@ use crate::units::{BinaryPrefix, Length, MetricPrefix, Prefix, Unit, UnitBucket}
 use core::mem::{transmute_copy, variant_count};
 #[test]
 fn unit_conversion() {
-    let time = std::time::Instant::now();
     convert(Unit::TimeUnit);
     convert(Unit::DistanceUnit);
     convert(Unit::MassUnit);
@@ -12,7 +11,6 @@ fn unit_conversion() {
     convert(Unit::LuminousIntensityUnit);
     convert(Unit::CurrencyUnit);
     convert(Unit::AngleUnit);
-    println!("{}", time.elapsed().as_nanos());
 }
 fn convert<E: UnitBucket, F: Fn(E) -> Unit>(f: F) {
     for e in iter::<E>() {

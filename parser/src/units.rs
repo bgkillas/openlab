@@ -222,11 +222,12 @@ impl Prefix {
         }
     }
     pub fn parse(s: &str) -> Option<(Self, Unit)> {
-        if let Some((pre, post)) = BinaryPrefix::parse_prefix(s)
+        if let Some((pre, post)) = BinaryPrefix::parse_prefix(s, |str| Unit::parse(str).is_some())
             && let Some(unit) = Unit::parse(post)
         {
             Some((Self::Binary(pre), unit))
-        } else if let Some((pre, post)) = MetricPrefix::parse_prefix(s)
+        } else if let Some((pre, post)) =
+            MetricPrefix::parse_prefix(s, |str| Unit::parse(str).is_some())
             && let Some(unit) = Unit::parse(post)
         {
             Some((Self::Metric(pre), unit))
@@ -235,20 +236,21 @@ impl Prefix {
         }
     }
 }
-fn prefix_parse<T, const N: usize>(s: &str, ms: [T; N]) -> Option<(T, &str)>
+fn prefix_parse<T, F, const N: usize>(s: &str, f: F, ms: [T; N]) -> Option<(T, &str)>
 where
     T: UnitBucket,
+    F: Fn(&str) -> bool,
 {
     for p in ms {
         if let Some(t) = s.strip_prefix(p.to_long())
-            && !t.is_empty()
+            && f(t)
         {
             return Some((p, t));
         }
     }
     for p in ms {
         if let Some(t) = s.strip_prefix(p.to_short())
-            && !t.is_empty()
+            && f(t)
         {
             return Some((p, t));
         }
@@ -315,9 +317,13 @@ impl UnitBucket for MetricPrefix {
     }
 }
 impl MetricPrefix {
-    pub fn parse_prefix(s: &str) -> Option<(Self, &str)> {
+    pub fn parse_prefix<F>(s: &str, f: F) -> Option<(Self, &str)>
+    where
+        F: Fn(&str) -> bool,
+    {
         prefix_parse(
             s,
+            f,
             [
                 Self::Quetta,
                 Self::Ronna,
@@ -379,9 +385,13 @@ impl UnitBucket for BinaryPrefix {
     }
 }
 impl BinaryPrefix {
-    pub fn parse_prefix(s: &str) -> Option<(Self, &str)> {
+    pub fn parse_prefix<F>(s: &str, f: F) -> Option<(Self, &str)>
+    where
+        F: Fn(&str) -> bool,
+    {
         prefix_parse(
             s,
+            f,
             [
                 Self::Kibi,
                 Self::Mebi,
