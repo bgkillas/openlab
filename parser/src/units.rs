@@ -76,7 +76,6 @@ pub enum DistanceUnit {
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum MassUnit {
-    ElectronVolt,
     Planck,
     #[default]
     Gram,
@@ -582,21 +581,20 @@ impl UnitBucket for DistanceUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::Planck => todo!(),
-            Self::Inch => todo!(),
-            Self::Foot => todo!(),
-            Self::Yard => todo!(),
+            Self::Planck => 1.61625518e-35,
+            Self::Inch => 0.0254,
+            Self::Foot => 0.0254 * 12.0,
+            Self::Yard => 0.0254 * 12.0 * 3.0,
             Self::Meter => 1.0,
-            Self::Mile => todo!(),
-            Self::AstronomicalUnit => todo!(),
-            Self::LightYear => todo!(),
-            Self::Parsec => todo!(),
+            Self::Mile => 0.0254 * 63360.0,
+            Self::AstronomicalUnit => 149597870700.0,
+            Self::LightYear => 9460730472580800.0,
+            Self::Parsec => 149597870700.0 * 64800.0 / PI,
         })
     }
 }
 impl UnitBucket for MassUnit {
     units!(
-        "electronvolt" | "eV" => Self::ElectronVolt,
         "planck_mass" | "m_P" => Self::Planck,
         "gram" | "g" => Self::Gram,
         "ounce" | "oz" => Self::Ounce,
@@ -612,13 +610,12 @@ impl UnitBucket for MassUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::ElectronVolt => todo!(),
-            Self::Planck => todo!(),
+            Self::Planck => 2.17643424e-8,
             Self::Gram => 1.0,
-            Self::Ounce => todo!(),
-            Self::Pound => todo!(),
-            Self::Tonne => todo!(),
-            Self::Solar => todo!(),
+            Self::Ounce => 28.349523125,
+            Self::Pound => 28.349523125 * 16.0,
+            Self::Tonne => 1000.0 * 1000.0,
+            Self::Solar => 1.988416e33,
         })
     }
 }
@@ -654,11 +651,10 @@ impl UnitBucket for TemperatureUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::Planck => todo!(),
-            Self::Kelvin => 1.0,
-            Self::Rankine => todo!(),
-            Self::Celsius => todo!(),
-            Self::Fahrenheit => todo!(),
+            Self::Planck => 1.41678416e32,
+            //TODO convert
+            Self::Kelvin | Self::Celsius => 1.0,
+            Self::Rankine | Self::Fahrenheit => 5.0 / 9.0,
         })
     }
 }
@@ -677,10 +673,8 @@ impl UnitBucket for AmountUnit {
     }
     fn get(self, _: ParserOptions<'_>) -> Option<Float> {
         Some(match self {
-            Self::Unit => todo!(),
-            Self::Mole => 1.0,
-            Self::Bit => todo!(),
-            Self::Byte => todo!(),
+            Self::Unit | Self::Mole | Self::Bit => 1.0,
+            Self::Byte => 8.0,
         })
     }
 }
