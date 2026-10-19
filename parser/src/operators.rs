@@ -27,18 +27,11 @@ pub enum Bracket {
 }
 impl Operator {
     pub fn parse(
-        no_input_left: bool,
+        input_left: bool,
         token: LexerToken,
         iter: &mut Peekable<LexerIter<'_>>,
     ) -> Option<Self> {
-        Some(if no_input_left {
-            match token {
-                LexerToken::Plus => Self::Identity,
-                LexerToken::Minus => Self::Negate,
-                LexerToken::ExclamationMark => Self::SubFactorial,
-                _ => return None,
-            }
-        } else {
+        Some(if input_left {
             match token {
                 LexerToken::Plus => Self::Add,
                 LexerToken::Minus => Self::Sub,
@@ -55,6 +48,13 @@ impl Operator {
                 LexerToken::ExclamationMark => Self::Factorial,
                 LexerToken::LeftParenthesis => Self::LeftBracket(Bracket::Parenthesis),
                 LexerToken::Bar => Self::LeftBracket(Bracket::Absolute),
+                _ => return None,
+            }
+        } else {
+            match token {
+                LexerToken::Plus => Self::Identity,
+                LexerToken::Minus => Self::Negate,
+                LexerToken::ExclamationMark => Self::SubFactorial,
                 _ => return None,
             }
         })
