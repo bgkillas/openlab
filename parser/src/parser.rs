@@ -116,6 +116,9 @@ impl State<'_> {
         self.operator_stack.push(operator);
     }
     fn push_number(&mut self, number: NumberInner) {
+        if !self.no_input_left {
+            self.push_operator(Operator::MulInner);
+        }
         self.no_input_left = false;
         self.expression
             .push(ExpressionToken::Number(Number::Complex(number)));

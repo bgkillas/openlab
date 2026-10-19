@@ -73,7 +73,7 @@ impl From<Operator> for Function {
             Operator::Add => Self::Add,
             Operator::Identity => Self::Identity,
             Operator::Sub => Self::Sub,
-            Operator::Mul => Self::Mul,
+            Operator::Mul | Operator::MulInner => Self::Mul,
             Operator::Div => Self::Div,
             Operator::Pow => Self::Pow,
             Operator::Root => Self::Root,

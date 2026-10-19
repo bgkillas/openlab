@@ -1,4 +1,5 @@
 use openlab::compute::Compute;
+use openlab::parser::lexer::iter::LexerIter;
 use openlab::parser::options::ParserOptions;
 use std::env::args;
 fn main() {
@@ -7,6 +8,7 @@ fn main() {
     let expr = args.next().unwrap();
     let config_dir = dirs::config_dir().map(|c| c.join("openlab"));
     let config_dir_path = config_dir.as_deref();
+    println!("{:#?}", LexerIter::new(&expr).collect::<Vec<_>>());
     let options = ParserOptions::new(config_dir_path);
     let block = Compute::parse(options, &expr);
     println!("{block:#?}");
