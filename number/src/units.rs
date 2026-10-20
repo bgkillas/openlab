@@ -21,16 +21,11 @@ impl<const N: usize> SimdTrait<N> for f64 {
 pub struct NumberUnits<T: NumberImpl = Complex, U: SimdTrait<N> = f32, const N: usize = 8> {
     pub number: T,
     pub units: Units<U, N>,
-    pub unit_state: UnitState<N>,
 }
 const _: () = assert!(size_of::<NumberUnits>() == 64);
 impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> NumberUnits<T, U, N> {
-    pub fn new(number: T, units: Units<U, N>, unit_state: UnitState<N>) -> Self {
-        Self {
-            number,
-            units,
-            unit_state,
-        }
+    pub fn new(number: T, units: Units<U, N>) -> Self {
+        Self { number, units }
     }
 }
 impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Debug for NumberUnits<T, U, N> {
@@ -47,11 +42,6 @@ impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Debug for NumberUnits<T, U,
 pub struct Units<U: SimdTrait<N> = f32, const N: usize = 8> {
     pub units: U::Simd,
 }
-#[derive(Copy, Clone, Debug, PartialEq, Default)]
-#[repr(transparent)]
-pub struct UnitState<const N: usize = 8> {
-    pub state: Simd<u16, N>,
-}
 impl<U: SimdTrait<N>, const N: usize> From<[U; N]> for Units<U, N> {
     fn from(value: [U; N]) -> Self {
         Self {
@@ -61,7 +51,7 @@ impl<U: SimdTrait<N>, const N: usize> From<[U; N]> for Units<U, N> {
 }
 impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> From<T> for NumberUnits<T, U, N> {
     fn from(number: T) -> Self {
-        Self::new(number, Units::default(), UnitState::default())
+        Self::new(number, Units::default())
     }
 }
 impl<U: SimdTrait<N>, const N: usize> NumberImpl for Units<U, N> {
@@ -114,28 +104,24 @@ where
         Some(Self {
             number: self.number.add(rhs.number)?,
             units: self.units.add(rhs.units)?,
-            unit_state: self.unit_state,
         })
     }
     fn sub(self, rhs: Self) -> Option<Self> {
         Some(Self {
             number: self.number.sub(rhs.number)?,
             units: self.units.sub(rhs.units)?,
-            unit_state: self.unit_state,
         })
     }
     fn mul(self, rhs: Self) -> Option<Self> {
         Some(Self {
             number: self.number.mul(rhs.number)?,
             units: self.units.mul(rhs.units)?,
-            unit_state: self.unit_state,
         })
     }
     fn div(self, rhs: Self) -> Option<Self> {
         Some(Self {
             number: self.number.div(rhs.number)?,
             units: self.units.div(rhs.units)?,
-            unit_state: self.unit_state,
         })
     }
     fn pow(self, rhs: Self) -> Option<Self> {
@@ -144,7 +130,6 @@ where
         Some(Self {
             number: self.number.pow(rhs.number)?,
             units,
-            unit_state: self.unit_state,
         })
     }
     fn root(self, rhs: Self) -> Option<Self> {
@@ -153,7 +138,6 @@ where
         Some(Self {
             number: self.number.root(rhs.number)?,
             units,
-            unit_state: self.unit_state,
         })
     }
 }
@@ -169,7 +153,6 @@ impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Neg for NumberUnits<T, U, N
         Self {
             number: -self.number,
             units: self.units,
-            unit_state: self.unit_state,
         }
     }
 }

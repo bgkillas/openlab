@@ -5,7 +5,7 @@ use core::fmt::Debug;
 use number::float::real::Real;
 use number::traits::complex::ComplexImpl as _;
 use number::traits::number::NumberImpl as _;
-use number::units::{UnitState, Units};
+use number::units::Units;
 use parser_macros::units;
 use reqwest::blocking;
 use std::fs;
@@ -855,7 +855,7 @@ impl Dimension {
         let units = unit.units();
         let mult = unit.get_scaled(options)?;
         let number = NumberBase::new_real(Real(mult * prefix.get(options)?));
-        Some(NumberInner::new(number, units, UnitState::default()))
+        Some(NumberInner::new(number, units))
     }
 }
 static CURRENCY: Mutex<Option<[Float; variant_count::<CurrencyUnit>()]>> = Mutex::new(None);
