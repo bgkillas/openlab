@@ -84,7 +84,7 @@ impl<'a> Block<'a> {
 struct State<'a> {
     expression: Vec<ExpressionToken<'a>>,
     operator_stack: Vec<Operator>,
-    fn_inputs: Vec<u8>,
+    fn_inputs: Vec<u32>,
     input_left: bool,
 }
 #[expect(clippy::derivable_impls)]
@@ -131,14 +131,7 @@ impl State<'_> {
     fn end(&mut self) -> Result<(), ParseError> {
         while let Some(operator) = self.operator_stack.pop() {
             if let Operator::LeftBracket(bracket) = operator {
-                match bracket {
-                    Bracket::Absolute => {
-                        self.expression
-                            .push(ExpressionToken::Function(Function::Abs));
-                    }
-                    Bracket::Parenthesis => {}
-                }
-                self.close_off_bracket()?;
+                self.close_off_bracket(bracket)?;
             } else {
                 self.expression
                     .push(ExpressionToken::Function(Function::from(operator)));
@@ -146,8 +139,7 @@ impl State<'_> {
         }
         Ok(())
     }
-    fn close_off_bracket(&mut self) -> Result<(), ParseError> {
-        self.input_left = true;
+    fn close_expr(&mut self) {
         while let Some(top) = self
             .operator_stack
             .pop_if(|top| !matches!(top, Operator::LeftBracket(_)))
@@ -155,17 +147,38 @@ impl State<'_> {
             self.expression
                 .push(ExpressionToken::Function(Function::from(top)));
         }
-        self.operator_stack
-            .pop_if(|top| matches!(top, Operator::LeftBracket(Bracket::Parenthesis)));
-        if let Some(&Operator::Function(fun)) = self.operator_stack.last() {
-            self.operator_stack.pop();
-            let inputs = self.fn_inputs.pop().unwrap();
-            if !fun.input_range().contains(&inputs) {
-                return Err(if fun.input_range().start < inputs {
-                    ParseError::MissingInput
-                } else {
-                    ParseError::TooMuchInput
-                });
+    }
+    fn close_off_bracket(&mut self, bracket: Bracket) -> Result<(), ParseError> {
+        self.input_left = true;
+        self.close_expr();
+        let Some(Operator::LeftBracket(_)) = self
+            .operator_stack
+            .pop_if(|top| *top == Operator::LeftBracket(bracket))
+        else {
+            return Ok(());
+        };
+        match bracket {
+            Bracket::Absolute => {
+                self.expression
+                    .push(ExpressionToken::Function(Function::Abs));
+            }
+            Bracket::Parenthesis => {
+                if let Some(&Operator::Function(fun)) = self.operator_stack.last() {
+                    self.operator_stack.pop();
+                    let inputs = self.fn_inputs.pop().unwrap();
+                    if !fun.input_range().contains(&inputs) {
+                        return Err(if fun.input_range().start < inputs {
+                            ParseError::MissingInput
+                        } else {
+                            ParseError::TooMuchInput
+                        });
+                    }
+                }
+            }
+            Bracket::Square => {
+                let inputs = self.fn_inputs.pop().unwrap();
+                self.expression
+                    .push(ExpressionToken::Function(Function::Vector(inputs)));
             }
         }
         Ok(())
@@ -185,7 +198,12 @@ impl<'a> BlockToken<'a> {
                 LexerToken::LeftParenthesis => {
                     state.push_operator(Operator::LeftBracket(Bracket::Parenthesis));
                 }
-                LexerToken::RightParenthesis => state.close_off_bracket()?,
+                LexerToken::RightParenthesis => state.close_off_bracket(Bracket::Parenthesis)?,
+                LexerToken::LeftSquareBracket => {
+                    state.fn_inputs.push(0);
+                    state.push_operator(Operator::LeftBracket(Bracket::Square));
+                }
+                LexerToken::RightSquareBracket => state.close_off_bracket(Bracket::Square)?,
                 LexerToken::Numeric(base, whole, part) => {
                     let number =
                         NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
@@ -197,6 +215,12 @@ impl<'a> BlockToken<'a> {
                 }
                 LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
                     state.push_operator(Operator::Function(fun));
+                }
+                LexerToken::Comma => {
+                    state.close_expr();
+                    if let Some(last) = state.fn_inputs.last_mut() {
+                        *last = last.checked_add(1).unwrap();
+                    }
                 }
                 LexerToken::Word(str) if let Some(num) = Dimension::parse(options, str) => {
                     state.push_number(num);

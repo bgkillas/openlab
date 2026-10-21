@@ -1,4 +1,6 @@
 use parser::functions::Function;
+use parser::number::matrix::dense::Matrix;
+use parser::number::matrix::size::MatrixDimension;
 use parser::number::traits::pow::{Pow as _, Root as _};
 use parser::options::ParserOptions;
 use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, ParseError};
@@ -65,6 +67,11 @@ impl ComputeInner {
             Function::Root => next().root(&next()),
             Function::Identity => Some(next()),
             Function::Negate => Some(-next()),
+            Function::Vector(i) => {
+                let dim = MatrixDimension::new(i, 1);
+                let mat = Matrix::new_with(dim, |_, _| next().complex().unwrap());
+                Some(Number::Matrix(mat))
+            }
             _ => todo!(),
         }
     }

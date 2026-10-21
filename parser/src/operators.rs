@@ -24,6 +24,7 @@ pub enum Operator {
 pub enum Bracket {
     Absolute,
     Parenthesis,
+    Square,
 }
 impl Operator {
     pub fn parse(
@@ -59,7 +60,7 @@ impl Operator {
             }
         })
     }
-    pub fn input_range(self) -> Range<u8> {
+    pub fn input_range(self) -> Range<u32> {
         match self {
             Self::Negate | Self::Factorial | Self::SubFactorial | Self::Identity => 1..2,
             Self::Add
@@ -76,7 +77,7 @@ impl Operator {
             }
         }
     }
-    pub fn inputs(self) -> u8 {
+    pub fn inputs(self) -> u32 {
         match self {
             Self::Negate | Self::Factorial | Self::SubFactorial | Self::Identity => 1,
             Self::Add

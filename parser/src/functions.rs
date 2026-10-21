@@ -15,6 +15,7 @@ pub enum Function {
     Mod,
     Abs,
     Identity,
+    Vector(u32),
     Custom(u32),
 }
 impl FromStr for Function {
@@ -31,7 +32,7 @@ impl FromStr for Function {
     }
 }
 impl Function {
-    pub fn input_range(self) -> Range<u8> {
+    pub fn input_range(self) -> Range<u32> {
         match self {
             Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => {
                 2..3
@@ -39,13 +40,15 @@ impl Function {
             Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => {
                 1..2
             }
+            Self::Vector(_) => 0..u32::MAX,
             Self::Custom(_) => todo!(),
         }
     }
-    pub fn inputs(self) -> u8 {
+    pub fn inputs(self) -> u32 {
         match self {
             Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => 2,
             Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => 1,
+            Self::Vector(v) => v,
             Self::Custom(_) => todo!(),
         }
     }
@@ -62,7 +65,8 @@ impl Function {
             | Self::Negate
             | Self::Mod
             | Self::Abs
-            | Self::Identity => 0,
+            | Self::Identity
+            | Self::Vector(_) => 0,
             Self::Custom(_) => todo!(),
         }
     }
