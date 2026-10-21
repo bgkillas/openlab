@@ -118,6 +118,13 @@ impl<C: NumberImpl> Number<C> {
             None
         }
     }
+    pub fn matrix_owned(self) -> Option<Matrix<C>> {
+        if let Self::Matrix(m) = self {
+            Some(m)
+        } else {
+            None
+        }
+    }
     pub fn matrix_mut(&mut self) -> Option<&mut Matrix<C>> {
         if let Self::Matrix(m) = self {
             Some(m)

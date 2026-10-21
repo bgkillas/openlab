@@ -1,3 +1,4 @@
+use core::iter;
 use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
 use parser::number::matrix::size::MatrixDimension;
@@ -68,9 +69,30 @@ impl ComputeInner {
             Function::Identity => Some(next()),
             Function::Negate => Some(-next()),
             Function::Vector(i) => {
-                let dim = MatrixDimension::new(i, 1);
-                let mat = Matrix::new_with(dim, |_, _| next().complex().unwrap());
-                Some(Number::Matrix(mat))
+                if i == 0 {
+                    Some(Number::Matrix(Matrix::default()))
+                } else {
+                    let first = next();
+                    let mat = match first {
+                        Number::Complex(c) => {
+                            let dim = MatrixDimension::new(i, 1);
+                            let mut new_iter = iter::once(Number::Complex(c)).chain(inputs);
+                            Matrix::new_with_try(dim, |_, _| new_iter.next()?.complex())?
+                        }
+                        Number::Matrix(m) if m.dimension.height == 1 => {
+                            let dim = MatrixDimension::new(m.dimension.width, i);
+                            let mut new_iter = iter::once(Number::Matrix(m)).chain(inputs);
+                            Matrix::from_rows_try(dim, |_, _| new_iter.next()?.matrix_owned())?
+                        }
+                        Number::Matrix(m) if m.dimension.width == 1 => {
+                            let dim = MatrixDimension::new(i, m.dimension.height);
+                            let mut new_iter = iter::once(Number::Matrix(m)).chain(inputs);
+                            Matrix::from_cols_try(dim, |_, _| new_iter.next()?.matrix_owned())?
+                        }
+                        Number::Matrix(_) | Number::List(_) => return None,
+                    };
+                    Some(Number::Matrix(mat))
+                }
             }
             _ => todo!(),
         }

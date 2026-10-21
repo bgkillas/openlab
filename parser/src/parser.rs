@@ -149,7 +149,6 @@ impl State<'_> {
         }
     }
     fn close_off_bracket(&mut self, bracket: Bracket) -> Result<(), ParseError> {
-        self.input_left = true;
         self.close_expr();
         let Some(Operator::LeftBracket(_)) = self
             .operator_stack
@@ -163,9 +162,14 @@ impl State<'_> {
                     .push(ExpressionToken::Function(Function::Abs));
             }
             Bracket::Parenthesis => {
-                if let Some(&Operator::Function(fun)) = self.operator_stack.last() {
-                    self.operator_stack.pop();
-                    let inputs = self.fn_inputs.pop().unwrap();
+                if let Some(Operator::Function(fun)) = self
+                    .operator_stack
+                    .pop_if(|o| matches!(o, Operator::Function(_)))
+                {
+                    let mut inputs = self.fn_inputs.pop().unwrap();
+                    if self.input_left {
+                        inputs += 1;
+                    }
                     if !fun.input_range().contains(&inputs) {
                         return Err(if fun.input_range().start < inputs {
                             ParseError::MissingInput
@@ -176,11 +180,15 @@ impl State<'_> {
                 }
             }
             Bracket::Square => {
-                let inputs = self.fn_inputs.pop().unwrap();
+                let mut inputs = self.fn_inputs.pop().unwrap();
+                if self.input_left {
+                    inputs += 1;
+                }
                 self.expression
                     .push(ExpressionToken::Function(Function::Vector(inputs)));
             }
         }
+        self.input_left = true;
         Ok(())
     }
 }
@@ -217,6 +225,7 @@ impl<'a> BlockToken<'a> {
                     state.push_operator(Operator::Function(fun));
                 }
                 LexerToken::Comma => {
+                    state.input_left = false;
                     state.close_expr();
                     if let Some(last) = state.fn_inputs.last_mut() {
                         *last = last.checked_add(1).unwrap();

@@ -72,6 +72,58 @@ impl<C: NumberImpl> Matrix<C> {
         }
         ret
     }
+    pub fn new_with_try<F>(dim: MatrixDimension, mut fun: F) -> Option<Self>
+    where
+        F: FnMut(usize, MatrixIndex) -> Option<C>,
+    {
+        let mut ret = Self::new_uninit(dim);
+        for (i, entry) in ret.entries_uninit_mut().iter_mut().enumerate() {
+            let index = MatrixIndex::from(dim, i).unwrap();
+            entry.write(fun(i, index)?);
+        }
+        Some(ret)
+    }
+    pub fn from_rows_try<F>(dim: MatrixDimension, mut fun: F) -> Option<Self>
+    where
+        F: FnMut(usize, MatrixIndex) -> Option<Self>,
+    {
+        let mut ret = Self::new_uninit(dim);
+        let mut iter = ret.entries_uninit_mut().iter_mut().enumerate();
+        while let Some((i, entry)) = iter.next() {
+            let index = MatrixIndex::from(dim, i).unwrap();
+            let vec = fun(i, index)?;
+            if vec.dimension.height != 1 || vec.dimension.width != dim.width {
+                return None;
+            }
+            entry.write(vec.entries()[0]);
+            for &elem in &vec.entries()[1..] {
+                let (_, e) = iter.next()?;
+                e.write(elem);
+            }
+        }
+        Some(ret)
+    }
+    pub fn from_cols_try<F>(dim: MatrixDimension, mut fun: F) -> Option<Self>
+    where
+        F: FnMut(usize, MatrixIndex) -> Option<Self>,
+    {
+        let mut ret = Self::new_uninit(dim);
+        let mut iter = ret.entries_uninit_mut().iter_mut().enumerate();
+        while let Some((i, entry)) = iter.next() {
+            let index = MatrixIndex::from(dim, i).unwrap();
+            let vec = fun(i, index)?;
+            if vec.dimension.width != 1 || vec.dimension.height != dim.height {
+                return None;
+            }
+            entry.write(vec.entries()[0]);
+            for &elem in &vec.entries()[1..] {
+                let (_, e) = iter.next()?;
+                e.write(elem);
+            }
+        }
+        ret.transpose();
+        Some(ret)
+    }
     pub fn new_dimension(&mut self, dim: MatrixDimension) {
         self.new_dimension_with(dim, |_, _| C::default());
     }
