@@ -15,6 +15,7 @@ pub enum Function {
     Mod,
     Abs,
     Identity,
+    Transpose,
     Vector(u32),
     Custom(u32),
 }
@@ -27,6 +28,7 @@ impl FromStr for Function {
             "mul" => Self::Mul,
             "div" => Self::Div,
             "pow" => Self::Pow,
+            "transpose" => Self::Transpose,
             _ => return Err(()),
         })
     }
@@ -37,9 +39,12 @@ impl Function {
             Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => {
                 2..3
             }
-            Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => {
-                1..2
-            }
+            Self::Abs
+            | Self::Factorial
+            | Self::SubFactorial
+            | Self::Negate
+            | Self::Identity
+            | Self::Transpose => 1..2,
             Self::Vector(_) => 0..u32::MAX,
             Self::Custom(_) => todo!(),
         }
@@ -47,7 +52,12 @@ impl Function {
     pub fn inputs(self) -> u32 {
         match self {
             Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Pow | Self::Root | Self::Mod => 2,
-            Self::Abs | Self::Factorial | Self::SubFactorial | Self::Negate | Self::Identity => 1,
+            Self::Abs
+            | Self::Factorial
+            | Self::SubFactorial
+            | Self::Negate
+            | Self::Identity
+            | Self::Transpose => 1,
             Self::Vector(v) => v,
             Self::Custom(_) => todo!(),
         }
@@ -66,6 +76,7 @@ impl Function {
             | Self::Mod
             | Self::Abs
             | Self::Identity
+            | Self::Transpose
             | Self::Vector(_) => 0,
             Self::Custom(_) => todo!(),
         }

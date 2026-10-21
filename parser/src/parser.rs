@@ -105,6 +105,9 @@ impl State<'_> {
             self.operator_stack.push(operator);
             return;
         }
+        if matches!(operator, Operator::Function(_)) {
+            self.fn_inputs.push(0);
+        }
         while let Some(top) = self.operator_stack.pop_if(|top| {
             !matches!(top, Operator::LeftBracket(_) | Operator::Function(_))
                 && (top.precedence() > operator.precedence()
@@ -177,6 +180,7 @@ impl State<'_> {
                             ParseError::TooMuchInput
                         });
                     }
+                    self.expression.push(ExpressionToken::Function(fun));
                 }
             }
             Bracket::Square => {

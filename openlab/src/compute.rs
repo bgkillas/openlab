@@ -94,6 +94,7 @@ impl ComputeInner {
                     Some(Number::Matrix(mat))
                 }
             }
+            Function::Transpose => next().transpose(),
             _ => todo!(),
         }
     }

@@ -343,6 +343,16 @@ impl<C: NumberImpl> Number<C> {
             }
         }
     }
+    pub fn transpose(self) -> Option<Self> {
+        match self {
+            c @ Self::Complex(_) => Some(c),
+            Self::Matrix(mut m) => {
+                m.transpose();
+                Some(Self::Matrix(m))
+            }
+            Self::List(_) => None,
+        }
+    }
 }
 pub enum NumberIter<A, B, C> {
     A(A),
