@@ -19,6 +19,11 @@ pub enum Operator {
     Mod,
     Identity,
     Transpose,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum OperatorToken {
+    Operator(Operator),
+    ComponentWise(Operator),
     LeftBracket(Bracket),
     Function(Function),
 }
@@ -27,6 +32,72 @@ pub enum Bracket {
     Absolute,
     Parenthesis,
     Square,
+}
+impl OperatorToken {
+    pub(crate) fn parse(
+        state: &State,
+        token: LexerToken,
+        iter: &mut Peekable<LexerIter<'_>>,
+    ) -> Option<Self> {
+        Some(if state.input_left {
+            match token {
+                LexerToken::LeftParenthesis => Self::LeftBracket(Bracket::Parenthesis),
+                LexerToken::Bar => Self::LeftBracket(Bracket::Absolute),
+                _ => Self::Operator(Operator::parse(state, token, iter)?),
+            }
+        } else {
+            Self::Operator(Operator::parse(state, token, iter)?)
+        })
+    }
+    pub fn input_range(self) -> Range<u32> {
+        match self {
+            Self::Operator(o) | Self::ComponentWise(o) => o.input_range(),
+            Self::Function(f) => f.input_range(),
+            Self::LeftBracket(_) => {
+                unreachable!()
+            }
+        }
+    }
+    pub fn inputs(self) -> u32 {
+        match self {
+            Self::Operator(o) | Self::ComponentWise(o) => o.inputs(),
+            Self::Function(f) => f.inputs(),
+            Self::LeftBracket(_) => {
+                unreachable!()
+            }
+        }
+    }
+    pub fn inner_vars(self) -> u8 {
+        if let Self::Function(fun) = self {
+            fun.inner_vars()
+        } else {
+            0
+        }
+    }
+    pub fn is_unary(self) -> bool {
+        match self {
+            Self::Operator(o) | Self::ComponentWise(o) => o.is_unary(),
+            _ => false,
+        }
+    }
+    pub fn unary_left(self) -> bool {
+        match self {
+            Self::Operator(o) | Self::ComponentWise(o) => o.unary_left(),
+            _ => unreachable!(),
+        }
+    }
+    pub fn precedence(self) -> u8 {
+        match self {
+            Self::Operator(o) | Self::ComponentWise(o) => o.precedence(),
+            Self::LeftBracket(_) | Self::Function(_) => unreachable!(),
+        }
+    }
+    pub fn left_associative(self) -> bool {
+        match self {
+            Self::Operator(o) | Self::ComponentWise(o) => o.left_associative(),
+            Self::LeftBracket(_) | Self::Function(_) => unreachable!(),
+        }
+    }
 }
 impl Operator {
     pub(crate) fn parse(
@@ -50,8 +121,6 @@ impl Operator {
                 LexerToken::Caret => Self::Pow,
                 LexerToken::Percent => Self::Mod,
                 LexerToken::ExclamationMark => Self::Factorial,
-                LexerToken::LeftParenthesis => Self::LeftBracket(Bracket::Parenthesis),
-                LexerToken::Bar => Self::LeftBracket(Bracket::Absolute),
                 _ => return None,
             }
         } else {
@@ -78,10 +147,6 @@ impl Operator {
             | Self::Pow
             | Self::Root
             | Self::Mod => 2..3,
-            Self::Function(f) => f.input_range(),
-            Self::LeftBracket(_) => {
-                unreachable!()
-            }
         }
     }
     pub fn inputs(self) -> u32 {
@@ -99,18 +164,11 @@ impl Operator {
             | Self::Pow
             | Self::Root
             | Self::Mod => 2,
-            Self::Function(f) => f.inputs(),
-            Self::LeftBracket(_) => {
-                unreachable!()
-            }
         }
     }
+    #[expect(clippy::unused_self)]
     pub fn inner_vars(self) -> u8 {
-        if let Self::Function(fun) = self {
-            fun.inner_vars()
-        } else {
-            0
-        }
+        0
     }
     pub fn is_unary(self) -> bool {
         matches!(
@@ -143,7 +201,6 @@ impl Operator {
             Self::Pow | Self::Root => 8,
             Self::Mod => 9,
             Self::Factorial | Self::SubFactorial | Self::Transpose => 10,
-            Self::LeftBracket(_) | Self::Function(_) => unreachable!(),
         }
     }
     pub fn left_associative(self) -> bool {
@@ -156,7 +213,6 @@ impl Operator {
             | Self::Factorial
             | Self::SubFactorial
             | Self::Transpose => false,
-            Self::LeftBracket(_) | Self::Function(_) => unreachable!(),
         }
     }
 }

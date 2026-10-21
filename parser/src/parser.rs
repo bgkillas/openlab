@@ -1,5 +1,5 @@
 use crate::functions::Function;
-use crate::operators::{Bracket, Operator};
+use crate::operators::{Bracket, Operator, OperatorToken};
 use crate::options::ParserOptions;
 use crate::units::{Dimension, UNIT_COUNT, UnitType};
 use core::iter::Peekable;
@@ -83,7 +83,7 @@ impl<'a> Block<'a> {
 }
 pub(crate) struct State<'a> {
     pub expression: Vec<ExpressionToken<'a>>,
-    pub operator_stack: Vec<Operator>,
+    pub operator_stack: Vec<OperatorToken>,
     pub fn_inputs: Vec<u32>,
     pub input_left: bool,
 }
@@ -99,19 +99,21 @@ impl Default for State<'_> {
     }
 }
 impl State<'_> {
-    fn push_operator(&mut self, operator: Operator) {
+    fn push_operator(&mut self, operator: OperatorToken) {
         self.input_left = operator.is_unary() && !operator.unary_left();
-        if matches!(operator, Operator::LeftBracket(_)) {
+        if matches!(operator, OperatorToken::LeftBracket(_)) {
             self.operator_stack.push(operator);
             return;
         }
-        if matches!(operator, Operator::Function(_)) {
+        if matches!(operator, OperatorToken::Function(_)) {
             self.fn_inputs.push(0);
         }
         while let Some(top) = self.operator_stack.pop_if(|top| {
-            !matches!(top, Operator::LeftBracket(_) | Operator::Function(_))
-                && (top.precedence() > operator.precedence()
-                    || (top.precedence() == operator.precedence() && operator.left_associative()))
+            !matches!(
+                top,
+                OperatorToken::LeftBracket(_) | OperatorToken::Function(_)
+            ) && (top.precedence() > operator.precedence()
+                || (top.precedence() == operator.precedence() && operator.left_associative()))
                 && !(!self.input_left
                     && operator.is_unary()
                     && operator.unary_left()
@@ -125,7 +127,7 @@ impl State<'_> {
     }
     fn push_number(&mut self, number: NumberInner) {
         if self.input_left {
-            self.push_operator(Operator::MulInner);
+            self.push_operator(OperatorToken::Operator(Operator::MulInner));
         }
         self.input_left = true;
         self.expression
@@ -133,7 +135,7 @@ impl State<'_> {
     }
     fn end(&mut self) -> Result<(), ParseError> {
         while let Some(operator) = self.operator_stack.pop() {
-            if let Operator::LeftBracket(bracket) = operator {
+            if let OperatorToken::LeftBracket(bracket) = operator {
                 self.close_off_bracket(bracket)?;
             } else {
                 self.expression
@@ -145,7 +147,7 @@ impl State<'_> {
     fn close_expr(&mut self) {
         while let Some(top) = self
             .operator_stack
-            .pop_if(|top| !matches!(top, Operator::LeftBracket(_)))
+            .pop_if(|top| !matches!(top, OperatorToken::LeftBracket(_)))
         {
             self.expression
                 .push(ExpressionToken::Function(Function::from(top)));
@@ -153,9 +155,9 @@ impl State<'_> {
     }
     fn close_off_bracket(&mut self, bracket: Bracket) -> Result<(), ParseError> {
         self.close_expr();
-        let Some(Operator::LeftBracket(_)) = self
+        let Some(OperatorToken::LeftBracket(_)) = self
             .operator_stack
-            .pop_if(|top| *top == Operator::LeftBracket(bracket))
+            .pop_if(|top| *top == OperatorToken::LeftBracket(bracket))
         else {
             return Ok(());
         };
@@ -165,9 +167,9 @@ impl State<'_> {
                     .push(ExpressionToken::Function(Function::Abs));
             }
             Bracket::Parenthesis => {
-                if let Some(Operator::Function(fun)) = self
+                if let Some(OperatorToken::Function(fun)) = self
                     .operator_stack
-                    .pop_if(|o| matches!(o, Operator::Function(_)))
+                    .pop_if(|o| matches!(o, OperatorToken::Function(_)))
                 {
                     let mut inputs = self.fn_inputs.pop().unwrap();
                     if self.input_left {
@@ -208,12 +210,12 @@ impl<'a> BlockToken<'a> {
                 LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
                 LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
                 LexerToken::LeftParenthesis => {
-                    state.push_operator(Operator::LeftBracket(Bracket::Parenthesis));
+                    state.push_operator(OperatorToken::LeftBracket(Bracket::Parenthesis));
                 }
                 LexerToken::RightParenthesis => state.close_off_bracket(Bracket::Parenthesis)?,
                 LexerToken::LeftSquareBracket => {
                     state.fn_inputs.push(0);
-                    state.push_operator(Operator::LeftBracket(Bracket::Square));
+                    state.push_operator(OperatorToken::LeftBracket(Bracket::Square));
                 }
                 LexerToken::RightSquareBracket => state.close_off_bracket(Bracket::Square)?,
                 LexerToken::Numeric(base, whole, part) => {
@@ -226,7 +228,7 @@ impl<'a> BlockToken<'a> {
                     print = false;
                 }
                 LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
-                    state.push_operator(Operator::Function(fun));
+                    state.push_operator(OperatorToken::Function(fun));
                 }
                 LexerToken::Comma => {
                     state.input_left = false;
@@ -238,7 +240,7 @@ impl<'a> BlockToken<'a> {
                 LexerToken::Word(str) if let Some(num) = Dimension::parse(options, str) => {
                     state.push_number(num);
                 }
-                t if let Some(op) = Operator::parse(&state, t, tokens) => {
+                t if let Some(op) = OperatorToken::parse(&state, t, tokens) => {
                     state.push_operator(op);
                 }
                 _ => todo!(),

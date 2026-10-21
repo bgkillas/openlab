@@ -1,4 +1,4 @@
-use crate::operators::Operator;
+use crate::operators::{Operator, OperatorToken};
 use core::ops::Range;
 use core::str::FromStr;
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
@@ -82,6 +82,15 @@ impl Function {
         }
     }
 }
+impl From<OperatorToken> for Function {
+    fn from(value: OperatorToken) -> Self {
+        match value {
+            OperatorToken::Function(f) => f,
+            OperatorToken::Operator(o) | OperatorToken::ComponentWise(o) => o.into(),
+            OperatorToken::LeftBracket(_) => unreachable!(),
+        }
+    }
+}
 impl From<Operator> for Function {
     fn from(value: Operator) -> Self {
         match value {
@@ -97,8 +106,6 @@ impl From<Operator> for Function {
             Operator::Negate => Self::Negate,
             Operator::Mod => Self::Mod,
             Operator::Transpose => Self::Transpose,
-            Operator::Function(f) => f,
-            Operator::LeftBracket(_) => unreachable!(),
         }
     }
 }
