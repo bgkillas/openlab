@@ -1,4 +1,5 @@
 use crate::functions::Function;
+use crate::parser::State;
 use core::iter::Peekable;
 use core::ops::Range;
 use lexer::iter::LexerIter;
@@ -17,6 +18,7 @@ pub enum Operator {
     Negate,
     Mod,
     Identity,
+    Transpose,
     LeftBracket(Bracket),
     Function(Function),
 }
@@ -27,18 +29,19 @@ pub enum Bracket {
     Square,
 }
 impl Operator {
-    pub fn parse(
-        input_left: bool,
+    pub(crate) fn parse(
+        state: &State,
         token: LexerToken,
         iter: &mut Peekable<LexerIter<'_>>,
     ) -> Option<Self> {
-        Some(if input_left {
+        Some(if state.input_left {
             match token {
                 LexerToken::Plus => Self::Add,
                 LexerToken::Minus => Self::Sub,
                 LexerToken::Asterisk if iter.next_if_eq(&LexerToken::Asterisk).is_some() => {
                     Self::Pow
                 }
+                LexerToken::SingleQuote => Self::Transpose,
                 LexerToken::Asterisk => Self::Mul,
                 LexerToken::FowardSlash if iter.next_if_eq(&LexerToken::FowardSlash).is_some() => {
                     Self::Root
@@ -62,7 +65,11 @@ impl Operator {
     }
     pub fn input_range(self) -> Range<u32> {
         match self {
-            Self::Negate | Self::Factorial | Self::SubFactorial | Self::Identity => 1..2,
+            Self::Negate
+            | Self::Factorial
+            | Self::SubFactorial
+            | Self::Identity
+            | Self::Transpose => 1..2,
             Self::Add
             | Self::Sub
             | Self::Mul
@@ -79,7 +86,11 @@ impl Operator {
     }
     pub fn inputs(self) -> u32 {
         match self {
-            Self::Negate | Self::Factorial | Self::SubFactorial | Self::Identity => 1,
+            Self::Negate
+            | Self::Factorial
+            | Self::SubFactorial
+            | Self::Identity
+            | Self::Transpose => 1,
             Self::Add
             | Self::Sub
             | Self::Mul
@@ -101,16 +112,16 @@ impl Operator {
             0
         }
     }
-    pub fn unary_right(self) -> bool {
-        matches!(self, Self::Factorial)
-    }
     pub fn is_unary(self) -> bool {
-        matches!(self, Self::Negate | Self::SubFactorial | Self::Factorial)
+        matches!(
+            self,
+            Self::Negate | Self::SubFactorial | Self::Factorial | Self::Transpose
+        )
     }
     pub fn unary_left(self) -> bool {
         match self {
             Self::Negate | Self::SubFactorial => true,
-            Self::Factorial => false,
+            Self::Factorial | Self::Transpose => false,
             _ => unreachable!(),
         }
     }
@@ -131,7 +142,7 @@ impl Operator {
             Self::Negate | Self::Identity | Self::MulInner => 7,
             Self::Pow | Self::Root => 8,
             Self::Mod => 9,
-            Self::Factorial | Self::SubFactorial => 10,
+            Self::Factorial | Self::SubFactorial | Self::Transpose => 10,
             Self::LeftBracket(_) | Self::Function(_) => unreachable!(),
         }
     }
@@ -143,7 +154,8 @@ impl Operator {
             | Self::Negate
             | Self::Identity
             | Self::Factorial
-            | Self::SubFactorial => false,
+            | Self::SubFactorial
+            | Self::Transpose => false,
             Self::LeftBracket(_) | Self::Function(_) => unreachable!(),
         }
     }

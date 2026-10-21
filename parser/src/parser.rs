@@ -81,11 +81,11 @@ impl<'a> Block<'a> {
         })
     }
 }
-struct State<'a> {
-    expression: Vec<ExpressionToken<'a>>,
-    operator_stack: Vec<Operator>,
-    fn_inputs: Vec<u32>,
-    input_left: bool,
+pub(crate) struct State<'a> {
+    pub expression: Vec<ExpressionToken<'a>>,
+    pub operator_stack: Vec<Operator>,
+    pub fn_inputs: Vec<u32>,
+    pub input_left: bool,
 }
 #[expect(clippy::derivable_impls)]
 impl Default for State<'_> {
@@ -100,7 +100,7 @@ impl Default for State<'_> {
 }
 impl State<'_> {
     fn push_operator(&mut self, operator: Operator) {
-        self.input_left = false;
+        self.input_left = operator.is_unary() && !operator.unary_left();
         if matches!(operator, Operator::LeftBracket(_)) {
             self.operator_stack.push(operator);
             return;
@@ -238,7 +238,7 @@ impl<'a> BlockToken<'a> {
                 LexerToken::Word(str) if let Some(num) = Dimension::parse(options, str) => {
                     state.push_number(num);
                 }
-                t if let Some(op) = Operator::parse(state.input_left, t, tokens) => {
+                t if let Some(op) = Operator::parse(&state, t, tokens) => {
                     state.push_operator(op);
                 }
                 _ => todo!(),

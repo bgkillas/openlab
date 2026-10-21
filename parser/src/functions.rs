@@ -96,6 +96,7 @@ impl From<Operator> for Function {
             Operator::SubFactorial => Self::SubFactorial,
             Operator::Negate => Self::Negate,
             Operator::Mod => Self::Mod,
+            Operator::Transpose => Self::Transpose,
             Operator::Function(f) => f,
             Operator::LeftBracket(_) => unreachable!(),
         }
