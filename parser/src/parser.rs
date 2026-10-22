@@ -2,8 +2,8 @@ use crate::functions::Function;
 use crate::operators::{Bracket, Operator, OperatorToken};
 use crate::options::ParserOptions;
 use crate::units::{Dimension, UNIT_COUNT, UnitType};
-use core::iter::Peekable;
 use core::str::FromStr as _;
+use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
@@ -56,12 +56,12 @@ pub enum ParseError {
 }
 impl<'a> Block<'a> {
     pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
-        let mut tokens = LexerIter::new(s).peekable();
+        let mut tokens = peek_nth(LexerIter::new(s));
         Self::parse_tokens(options, &mut tokens)
     }
     pub fn parse_tokens(
         options: ParserOptions<'_>,
-        tokens: &mut Peekable<LexerIter<'a>>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<Self, ParseError> {
         let mut blocks = Vec::new();
         while let Some(token) = tokens.peek() {
@@ -201,7 +201,7 @@ impl State<'_> {
 impl<'a> BlockToken<'a> {
     pub fn parse_expression(
         options: ParserOptions<'_>,
-        tokens: &mut Peekable<LexerIter<'a>>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<Self, ParseError> {
         let mut state = State::default();
         let mut print = true;

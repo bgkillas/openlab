@@ -1,7 +1,7 @@
 use crate::functions::Function;
 use crate::parser::State;
-use core::iter::Peekable;
 use core::ops::Range;
+use itertools::PeekNth;
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -37,19 +37,26 @@ impl OperatorToken {
     pub(crate) fn parse(
         state: &State,
         token: LexerToken,
-        iter: &mut Peekable<LexerIter<'_>>,
+        iter: &mut PeekNth<LexerIter<'_>>,
     ) -> Option<Self> {
         Some(if state.input_left {
             match token {
                 LexerToken::LeftParenthesis => Self::LeftBracket(Bracket::Parenthesis),
                 LexerToken::Bar => Self::LeftBracket(Bracket::Absolute),
-                LexerToken::Period => {
-                    Self::ComponentWise(Operator::parse_component_wise(state, iter.peek()?.token)?)
+                LexerToken::Colon => {
+                    let ret =
+                        Self::ComponentWise(Operator::parse(state, iter.peek()?.token, iter, 1)?);
+                    iter.next();
+                    ret
                 }
-                _ => Self::Operator(Operator::parse(state, token, iter)?),
+                _ => Self::Operator(Operator::parse(state, token, iter, 0)?),
             }
+        } else if token == LexerToken::Colon {
+            let ret = Self::Operator(Operator::parse(state, iter.peek()?.token, iter, 1)?);
+            iter.next();
+            ret
         } else {
-            Self::Operator(Operator::parse(state, token, iter)?)
+            Self::Operator(Operator::parse(state, token, iter, 0)?)
         })
     }
     pub fn input_range(self) -> Range<u32> {
@@ -103,43 +110,30 @@ impl OperatorToken {
     }
 }
 impl Operator {
-    pub(crate) fn parse_component_wise(state: &State, token: LexerToken) -> Option<Self> {
-        Some(if state.input_left {
-            match token {
-                LexerToken::Plus => Self::Add,
-                LexerToken::Minus => Self::Sub,
-                LexerToken::SingleQuote => Self::Transpose,
-                LexerToken::Asterisk => Self::Mul,
-                LexerToken::FowardSlash => Self::Div,
-                LexerToken::Caret => Self::Pow,
-                LexerToken::Percent => Self::Mod,
-                LexerToken::ExclamationMark => Self::Factorial,
-                _ => return None,
-            }
-        } else {
-            match token {
-                LexerToken::Plus => Self::Identity,
-                LexerToken::Minus => Self::Negate,
-                LexerToken::ExclamationMark => Self::SubFactorial,
-                _ => return None,
-            }
-        })
-    }
     pub(crate) fn parse(
         state: &State,
         token: LexerToken,
-        iter: &mut Peekable<LexerIter<'_>>,
+        iter: &mut PeekNth<LexerIter<'_>>,
+        i: usize,
     ) -> Option<Self> {
         Some(if state.input_left {
             match token {
                 LexerToken::Plus => Self::Add,
                 LexerToken::Minus => Self::Sub,
-                LexerToken::Asterisk if iter.next_if_eq(&LexerToken::Asterisk).is_some() => {
+                LexerToken::Asterisk
+                    if let Some(&t) = iter.peek_nth(i)
+                        && t.token == LexerToken::Asterisk =>
+                {
+                    iter.next();
                     Self::Pow
                 }
                 LexerToken::SingleQuote => Self::Transpose,
                 LexerToken::Asterisk => Self::Mul,
-                LexerToken::FowardSlash if iter.next_if_eq(&LexerToken::FowardSlash).is_some() => {
+                LexerToken::FowardSlash
+                    if let Some(&t) = iter.peek_nth(i)
+                        && t.token == LexerToken::FowardSlash =>
+                {
+                    iter.next();
                     Self::Root
                 }
                 LexerToken::FowardSlash => Self::Div,
