@@ -8,7 +8,7 @@
 #![feature(gca_macroless_args)]
 #![expect(incomplete_features)]
 pub mod functions;
-mod operators;
+pub mod operators;
 pub mod options;
 pub mod parser;
 #[cfg(test)]

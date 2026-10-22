@@ -3,6 +3,7 @@ use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
 use parser::number::matrix::size::MatrixDimension;
 use parser::number::traits::pow::{Pow as _, Root as _};
+use parser::operators::Operator;
 use parser::options::ParserOptions;
 use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, ParseError};
 #[derive(Debug, Default)]
@@ -60,14 +61,6 @@ impl ComputeInner {
         );
         let mut next = || inputs.next().unwrap();
         match fun {
-            Function::Add => next() + next(),
-            Function::Sub => next() - next(),
-            Function::Mul => next() * next(),
-            Function::Div => next() / next(),
-            Function::Pow => next().pow(&next()),
-            Function::Root => next().root(&next()),
-            Function::Identity => Some(next()),
-            Function::Negate => Some(-next()),
             Function::Vector(i) => {
                 if i == 0 {
                     Some(Number::Matrix(Matrix::default()))
@@ -94,7 +87,34 @@ impl ComputeInner {
                     Some(Number::Matrix(mat))
                 }
             }
-            Function::Transpose => next().transpose(),
+            Function::Operator(o) => match o {
+                Operator::Add => next() + next(),
+                Operator::Sub => next() - next(),
+                Operator::Mul | Operator::MulInner => next() * next(),
+                Operator::Div => next() / next(),
+                Operator::Pow => next().pow(&next()),
+                Operator::Root => next().root(&next()),
+                Operator::Identity => Some(next()),
+                Operator::Negate => Some(-next()),
+                Operator::Transpose => next().transpose(),
+                Operator::Factorial => todo!(),
+                Operator::SubFactorial => todo!(),
+                Operator::Mod => todo!(),
+            },
+            Function::ComponentWise(o) => match o {
+                Operator::Add => next() + next(),
+                Operator::Sub => next() - next(),
+                Operator::Mul | Operator::MulInner => next() * next(),
+                Operator::Div => next() / next(),
+                Operator::Pow => next().pow(&next()),
+                Operator::Root => next().root(&next()),
+                Operator::Identity => Some(next()),
+                Operator::Negate => Some(-next()),
+                Operator::Transpose => next().transpose(),
+                Operator::Factorial => todo!(),
+                Operator::SubFactorial => todo!(),
+                Operator::Mod => todo!(),
+            },
             _ => todo!(),
         }
     }
