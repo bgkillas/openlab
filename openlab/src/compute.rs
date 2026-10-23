@@ -1,8 +1,9 @@
 use core::iter;
+use core::ops::{Add, Div, Mul, Sub};
 use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
 use parser::number::matrix::size::MatrixDimension;
-use parser::number::traits::pow::{Pow as _, Root as _};
+use parser::number::traits::pow::{Pow, Root};
 use parser::operators::Operator;
 use parser::options::ParserOptions;
 use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, ParseError};
@@ -102,18 +103,16 @@ impl ComputeInner {
                 Operator::Mod => todo!(),
             },
             Function::ComponentWise(o) => match o {
-                Operator::Add => next() + next(),
-                Operator::Sub => next() - next(),
-                Operator::Mul | Operator::MulInner => next() * next(),
-                Operator::Div => next() / next(),
-                Operator::Pow => next().pow(&next()),
-                Operator::Root => next().root(&next()),
-                Operator::Identity => Some(next()),
-                Operator::Negate => Some(-next()),
-                Operator::Transpose => next().transpose(),
+                Operator::Add => next().component_wise(&next(), Add::add),
+                Operator::Sub => next().component_wise(&next(), Sub::sub),
+                Operator::Mul | Operator::MulInner => next().component_wise(&next(), Mul::mul),
+                Operator::Div => next().component_wise(&next(), Div::div),
+                Operator::Pow => next().component_wise(&next(), Pow::pow),
+                Operator::Root => next().component_wise(&next(), Root::root),
                 Operator::Factorial => todo!(),
                 Operator::SubFactorial => todo!(),
                 Operator::Mod => todo!(),
+                Operator::Identity | Operator::Negate | Operator::Transpose => unreachable!(),
             },
             _ => todo!(),
         }

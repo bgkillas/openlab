@@ -4,9 +4,11 @@ use crate::traits::assign::NegAssign;
 use crate::traits::base::Operations;
 use crate::traits::cast::Cast;
 use crate::traits::number::NumberImpl;
+use crate::traits::pow::{Pow, Root};
 use crate::traits::real::RealImpl;
 use core::fmt::{Debug, Formatter};
 use core::ops::Neg;
+use core::ops::{Add, Div, Mul, Sub};
 use std::simd::{Simd, SimdElement};
 pub trait SimdTrait<const N: usize>: SimdElement + RealImpl {
     type Simd: Copy + Clone + Debug + PartialEq + Default + Operations + From<[Self; N]>;
@@ -139,6 +141,60 @@ where
             number: self.number.root(rhs.number)?,
             units,
         })
+    }
+}
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Add for NumberUnits<T, U, N>
+where
+    T::NumberReal: Cast<U>,
+{
+    type Output = Option<Self>;
+    fn add(self, rhs: Self) -> Self::Output {
+        <Self as NumberImpl>::add(self, rhs)
+    }
+}
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Sub for NumberUnits<T, U, N>
+where
+    T::NumberReal: Cast<U>,
+{
+    type Output = Option<Self>;
+    fn sub(self, rhs: Self) -> Self::Output {
+        <Self as NumberImpl>::sub(self, rhs)
+    }
+}
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Mul for NumberUnits<T, U, N>
+where
+    T::NumberReal: Cast<U>,
+{
+    type Output = Option<Self>;
+    fn mul(self, rhs: Self) -> Self::Output {
+        <Self as NumberImpl>::mul(self, rhs)
+    }
+}
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Div for NumberUnits<T, U, N>
+where
+    T::NumberReal: Cast<U>,
+{
+    type Output = Option<Self>;
+    fn div(self, rhs: Self) -> Self::Output {
+        <Self as NumberImpl>::div(self, rhs)
+    }
+}
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Pow<Self> for NumberUnits<T, U, N>
+where
+    T::NumberReal: Cast<U>,
+{
+    type Output = Option<Self>;
+    fn pow(self, rhs: Self) -> Self::Output {
+        <Self as NumberImpl>::pow(self, rhs)
+    }
+}
+impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> Root<Self> for NumberUnits<T, U, N>
+where
+    T::NumberReal: Cast<U>,
+{
+    type Output = Option<Self>;
+    fn root(self, rhs: Self) -> Self::Output {
+        <Self as NumberImpl>::root(self, rhs)
     }
 }
 impl<U: SimdTrait<N>, const N: usize> Neg for Units<U, N> {
