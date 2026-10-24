@@ -1,6 +1,7 @@
 use crate::units::{BinaryPrefix, Length, MetricPrefix, Prefix, Unit, UnitBucket};
 use core::mem::{transmute_copy, variant_count};
 #[test]
+#[cfg(not(miri))]
 fn unit_conversion() {
     convert(Unit::TimeUnit);
     convert(Unit::DistanceUnit);
@@ -12,6 +13,7 @@ fn unit_conversion() {
     convert(Unit::CurrencyUnit);
     convert(Unit::AngleUnit);
 }
+#[cfg(not(miri))]
 fn convert<E: UnitBucket, F: Fn(E) -> Unit>(f: F) {
     for e in iter::<E>() {
         for l in iter::<Length>() {
@@ -45,6 +47,7 @@ fn convert<E: UnitBucket, F: Fn(E) -> Unit>(f: F) {
         }
     }
 }
+#[cfg(not(miri))]
 pub fn iter<E>() -> impl Iterator<Item = E> {
     (0..variant_count::<E>()).map(|i| unsafe { transmute_copy(&i) })
 }

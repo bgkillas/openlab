@@ -13,11 +13,11 @@ build_full:
 miri:
     cargo miri test -- --nocapture --test-threads=1
 test:
-    cargo test -- --nocapture --test-threads=1
+    cargo nextest run -- --nocapture
 test_rel:
-    cargo test --release -- --nocapture --test-threads=1
+    cargo nextest run --release -- --nocapture
 bench:
-    cargo bench --lib --quiet -- --color always --test-threads=1 --nocapture
+    cargo bench --quiet -- --color always --test-threads=1 --nocapture
 clippy:
     cargo fmt
     cargo clippy
