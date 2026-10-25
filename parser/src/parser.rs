@@ -13,7 +13,7 @@ pub type Float = f64;
 pub type NumberBase = Complex<Float>;
 pub type NumberInner = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
 pub type Number = number::number::Number<NumberInner>;
-#[derive(Clone, Default, Debug)]
+#[derive(PartialEq, Clone, Default, Debug)]
 pub struct Expression<'a> {
     pub tokens: Box<[ExpressionToken<'a>]>,
 }
@@ -24,7 +24,7 @@ pub enum Variable {
     Global(u32),
     None,
 }
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum ExpressionToken<'a> {
     Block(Block<'a>),
     Number(Number),
@@ -32,11 +32,11 @@ pub enum ExpressionToken<'a> {
     Function(Function),
     Skip(u32),
 }
-#[derive(Clone, Default, Debug)]
+#[derive(PartialEq, Clone, Default, Debug)]
 pub struct Block<'a> {
     pub blocks: Box<[BlockToken<'a>]>,
 }
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum BlockToken<'a> {
     Block(Block<'a>),
     Function(&'a str, Block<'a>),
@@ -199,6 +199,13 @@ impl State<'_> {
     }
 }
 impl<'a> BlockToken<'a> {
+    pub fn parse_expression_str(
+        options: ParserOptions<'_>,
+        s: &'a str,
+    ) -> Result<Self, ParseError> {
+        let mut tokens = peek_nth(LexerIter::new(s));
+        Self::parse_expression(options, &mut tokens)
+    }
     pub fn parse_expression(
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
