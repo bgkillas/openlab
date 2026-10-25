@@ -23,19 +23,29 @@ impl<'a> Compute<'a> {
             inner: ComputeInner::default(),
         })
     }
-    pub fn compute(&mut self) {
-        for block in &self.block.blocks {
+    pub fn from_block(block: Block<'a>) -> Self {
+        Self {
+            block,
+            inner: ComputeInner::default(),
+        }
+    }
+    pub fn compute(&mut self) -> Option<Number> {
+        for (i, block) in self.block.blocks.iter().enumerate() {
             match block {
                 BlockToken::Expression(expr) => {
                     self.inner.expr(expr);
                 }
                 BlockToken::PrintExpression(expr) => {
                     let res = self.inner.expr(expr);
+                    if i == self.block.blocks.len() - 1 {
+                        return res;
+                    }
                     println!("{res:?}");
                 }
                 _ => todo!(),
             }
         }
+        None
     }
 }
 impl ComputeInner {

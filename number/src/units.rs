@@ -1,8 +1,10 @@
 use crate::assign_neg;
 use crate::float::complex::Complex;
+use crate::float::real::Real;
 use crate::traits::assign::NegAssign;
 use crate::traits::base::Operations;
 use crate::traits::cast::Cast;
+use crate::traits::complex::ComplexImpl as _;
 use crate::traits::number::NumberImpl;
 use crate::traits::pow::{Pow, Root};
 use crate::traits::real::RealImpl;
@@ -25,6 +27,11 @@ pub struct NumberUnits<T: NumberImpl = Complex, U: SimdTrait<N> = f32, const N: 
     pub units: Units<U, N>,
 }
 const _: () = assert!(size_of::<NumberUnits>() == 64);
+impl<U: SimdTrait<N>, const N: usize> From<f64> for NumberUnits<Complex<f64>, U, N> {
+    fn from(value: f64) -> Self {
+        Self::new(Complex::new_real(Real(value)), Units::default())
+    }
+}
 impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> NumberUnits<T, U, N> {
     pub fn new(number: T, units: Units<U, N>) -> Self {
         Self { number, units }
