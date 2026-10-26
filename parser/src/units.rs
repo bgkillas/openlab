@@ -852,6 +852,13 @@ impl Dimension {
     }
     pub fn parse(options: ParserOptions<'_>, s: &str) -> Option<NumberInner> {
         let (prefix, unit) = Prefix::parse(s)?;
+        Self::number_inner(options, prefix, unit)
+    }
+    pub fn number_inner(
+        options: ParserOptions<'_>,
+        prefix: Prefix,
+        unit: Unit,
+    ) -> Option<NumberInner> {
         let units = unit.units();
         let mult = unit.get_scaled(options)?;
         let number = NumberBase::new_real(Real(mult * prefix.get(options)?));
