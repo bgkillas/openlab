@@ -30,14 +30,19 @@ impl<'a> Compute<'a> {
         }
     }
     pub fn compute(&mut self) -> Option<Number> {
-        for (i, block) in self.block.blocks.iter().enumerate() {
-            match block {
+        self.inner.block(&self.block)
+    }
+}
+impl ComputeInner {
+    pub fn block(&mut self, block: &Block<'_>) -> Option<Number> {
+        for (i, block_token) in block.blocks.iter().enumerate() {
+            match block_token {
                 BlockToken::Expression(expr) => {
-                    self.inner.expr(expr);
+                    self.expr(expr);
                 }
                 BlockToken::PrintExpression(expr) => {
-                    let res = self.inner.expr(expr);
-                    if i == self.block.blocks.len() - 1 {
+                    let res = self.expr(expr);
+                    if i == block.blocks.len() - 1 {
                         return res;
                     }
                     println!("{res:?}");
@@ -47,8 +52,6 @@ impl<'a> Compute<'a> {
         }
         None
     }
-}
-impl ComputeInner {
     fn expr(&mut self, expr: &Expression) -> Option<Number> {
         for token in &expr.tokens {
             let number = match token {
@@ -56,7 +59,7 @@ impl ComputeInner {
                 &ExpressionToken::Function(fun) => self.fun(fun)?,
                 ExpressionToken::Variable(_) => todo!(),
                 ExpressionToken::Skip(_) => todo!(),
-                ExpressionToken::Block(_) => todo!(),
+                ExpressionToken::Block(block) => self.block(block)?,
             };
             self.stack.push(number);
         }

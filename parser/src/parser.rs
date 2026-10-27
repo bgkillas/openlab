@@ -53,6 +53,7 @@ pub enum ParseError {
     MissingInput,
     TooMuchInput,
     LexerError,
+    UnexpectedToken,
 }
 impl<'a> Block<'a> {
     pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
@@ -67,6 +68,15 @@ impl<'a> Block<'a> {
         while let Some(token) = tokens.peek() {
             let part = match token.token {
                 LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
+                LexerToken::Word("if") => todo!(),
+                LexerToken::Word("else") => todo!(),
+                LexerToken::SingleQuote => todo!(),
+                LexerToken::Word("for") => todo!(),
+                LexerToken::Word("in") => todo!(),
+                LexerToken::Word("while") => todo!(),
+                LexerToken::Word("loop") => todo!(),
+                LexerToken::Word("break") => todo!(),
+                LexerToken::Word("continue") => todo!(),
                 LexerToken::Word("fn") => todo!(),
                 LexerToken::Word("let") => todo!(),
                 LexerToken::Word("mut") => todo!(),
@@ -250,7 +260,7 @@ impl<'a> BlockToken<'a> {
                 t if let Some(op) = OperatorToken::parse(&state, t, tokens) => {
                     state.push_operator(op);
                 }
-                _ => todo!(),
+                _ => return Err(ParseError::UnexpectedToken),
             }
         }
         state.end()?;
