@@ -13,6 +13,6 @@ fn main() {
     let block = Compute::parse(options, &expr);
     println!("{block:#?}");
     if let Ok(mut inner) = block {
-        inner.compute();
+        println!("{:#?}", inner.compute());
     }
 }

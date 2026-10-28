@@ -4,11 +4,12 @@ use crate::traits::number::NumberImpl;
 use alloc::alloc::Global;
 use core::alloc::{Allocator as _, Layout};
 use core::fmt::{Debug, Formatter};
+use core::iter;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::ptr::drop_in_place;
 use core::slice;
-use itertools::{IntoChunks, Itertools as _};
+use itertools::{Either, IntoChunks, Itertools as _};
 #[derive(Default)]
 pub struct Matrix<C>
 where
@@ -207,7 +208,11 @@ impl<C: NumberImpl> Matrix<C> {
         Some(rows)
     }
     pub fn rows(&self) -> impl Iterator<Item = &[C]> {
-        self.entries().chunks_exact(self.width())
+        if self.size() == 0 {
+            Either::Left(iter::empty())
+        } else {
+            Either::Right(self.entries().chunks_exact(self.width()))
+        }
     }
     pub fn cols(&self) -> IntoChunks<impl Iterator<Item = C>> {
         (0..self.width())
@@ -216,8 +221,12 @@ impl<C: NumberImpl> Matrix<C> {
             .chunks(self.height())
     }
     pub fn rows_mut(&mut self) -> impl Iterator<Item = &mut [C]> {
-        let width = self.width();
-        self.entries_mut().chunks_exact_mut(width)
+        if self.size() == 0 {
+            Either::Left(iter::empty())
+        } else {
+            let width = self.width();
+            Either::Right(self.entries_mut().chunks_exact_mut(width))
+        }
     }
     /*pub fn cols_mut(&mut self) -> IntoChunks<impl Iterator<Item = &mut C>> {
         (0..self.width())
