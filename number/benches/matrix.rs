@@ -7,7 +7,7 @@ use number::matrix::size::MatrixDimension;
 use number::traits::complex::ComplexImpl;
 use number::units::{NumberUnits, Units};
 use std::hint::black_box;
-fn criterion_benchmark(crit: &mut Criterion) {
+fn matrix(crit: &mut Criterion) {
     let size = 16;
     let mut group = crit.benchmark_group("sample");
     group.sample_size(128);
@@ -21,7 +21,7 @@ fn criterion_benchmark(crit: &mut Criterion) {
             |u, _| (size * size - u as u32) as f64,
         ));
         group.bench_function("matrix multiplication", |bencher| {
-            bencher.iter(|| black_box(a.mul(&b)))
+            bencher.iter(||a.mul(&b))
         });
     }
     {
@@ -34,7 +34,7 @@ fn criterion_benchmark(crit: &mut Criterion) {
             |u, _| Complex::new_real(Real((size * size - u as u32) as f64)),
         ));
         group.bench_function("matrix multiplication complex", |bencher| {
-            bencher.iter(|| black_box(a.mul(&b)))
+            bencher.iter(||a.mul(&b))
         });
     }
     {
@@ -47,7 +47,7 @@ fn criterion_benchmark(crit: &mut Criterion) {
             |u, _| NumberUnits::new((size * size - u as u32) as f64, Units::default()),
         ));
         group.bench_function("matrix multiplication units", |bencher| {
-            bencher.iter(|| black_box(a.mul(&b)))
+            bencher.iter(||a.mul(&b))
         });
     }
     {
@@ -65,11 +65,10 @@ fn criterion_benchmark(crit: &mut Criterion) {
             },
         ));
         group.bench_function("matrix multiplication complex units", |bencher| {
-            bencher.iter(|| black_box(a.mul(&b)))
+            bencher.iter(||a.mul(&b))
         });
     }
     group.finish();
 }
-
-criterion_group!(benches, criterion_benchmark);
-criterion_main!(benches);
+criterion_group!(number, matrix);
+criterion_main!(number);

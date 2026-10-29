@@ -11,5 +11,9 @@ parser = {workspace = true}
 [dev-dependencies]
 criterion = {workspace = true}
 
+[[bench]]
+name = "compute"
+harness = false
+
 [lints]
 workspace = true
