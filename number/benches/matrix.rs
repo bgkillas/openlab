@@ -8,7 +8,7 @@ use number::traits::complex::ComplexImpl;
 use number::units::{NumberUnits, Units};
 use std::hint::black_box;
 fn criterion_benchmark(crit: &mut Criterion) {
-    let size = 4;
+    let size = 16;
     let mut group = crit.benchmark_group("sample");
     group.sample_size(128);
     {

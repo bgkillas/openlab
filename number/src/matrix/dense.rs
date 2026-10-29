@@ -278,6 +278,7 @@ impl<'a, C: NumberImpl + 'a> Iterator for ColIter<'a, C> {
         Some(iter)
     }
 }
+#[derive(Clone)]
 pub struct ColInnerIter<'a, C: NumberImpl> {
     matrix: NonNull<Matrix<C>>,
     entry: usize,

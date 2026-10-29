@@ -163,6 +163,61 @@ impl State<'_> {
                 .push(ExpressionToken::Function(Function::from(top)));
         }
     }
+    fn optimize_matrix(&mut self, height: u32) -> Option<u32> {
+        if height == 0 {
+            return None;
+        }
+        let mut iter = self.expression.iter().rev();
+        let width = {
+            let &ExpressionToken::Function(Function::Vector(wid)) = iter.next()? else {
+                return None;
+            };
+            wid
+        };
+        if height == 1 {
+            self.expression.pop();
+            return Some(width);
+        }
+        let mut inputs = height - 1;
+        let mut inner_inputs = width;
+        let mut pos = Vec::with_capacity(usize::try_from(height).unwrap());
+        for (i, token) in iter.enumerate() {
+            match token {
+                ExpressionToken::Block(_)
+                | ExpressionToken::Number(_)
+                | ExpressionToken::Variable(_) => {
+                    inner_inputs -= 1;
+                }
+                ExpressionToken::Function(f) => {
+                    if inner_inputs == 0 {
+                        let &Function::Vector(wid) = f else {
+                            return None;
+                        };
+                        if wid != width {
+                            return None;
+                        }
+                        pos.push(i);
+                        if inputs == 0 {
+                            break;
+                        }
+                        inputs -= 1;
+                        inner_inputs = width;
+                    } else {
+                        inner_inputs += f.inputs() - 1;
+                    }
+                }
+                ExpressionToken::Skip(_) => {
+                    unreachable!()
+                }
+            }
+        }
+        self.expression.pop();
+        let len = self.expression.len() - 1;
+        for p in pos {
+            self.expression.remove(len - p);
+        }
+        Some(width)
+    }
     fn close_off_bracket(&mut self, bracket: Bracket) -> Result<(), ParseError> {
         self.close_expr();
         let Some(OperatorToken::LeftBracket(_)) = self
@@ -200,8 +255,12 @@ impl State<'_> {
                 if self.input_left {
                     inputs += 1;
                 }
-                self.expression
-                    .push(ExpressionToken::Function(Function::Vector(inputs)));
+                let vec = if let Some(width) = self.optimize_matrix(inputs) {
+                    Function::Matrix(width, inputs)
+                } else {
+                    Function::Vector(inputs)
+                };
+                self.expression.push(ExpressionToken::Function(vec));
             }
         }
         self.input_left = true;

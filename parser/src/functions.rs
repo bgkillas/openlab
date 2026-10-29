@@ -7,6 +7,7 @@ pub enum Function {
     ComponentWise(Operator),
     Abs,
     Vector(u32),
+    Matrix(u32, u32),
     Custom(u32),
 }
 impl FromStr for Function {
@@ -28,7 +29,7 @@ impl Function {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.input_range(),
             Self::Abs => 1..2,
-            Self::Vector(_) => 0..u32::MAX,
+            Self::Vector(_) | Self::Matrix(_, _) => 0..u32::MAX,
             Self::Custom(_) => todo!(),
         }
     }
@@ -37,13 +38,14 @@ impl Function {
             Self::Operator(o) | Self::ComponentWise(o) => o.inputs(),
             Self::Abs => 1,
             Self::Vector(v) => v,
+            Self::Matrix(v, l) => v * l,
             Self::Custom(_) => todo!(),
         }
     }
     pub fn inner_vars(self) -> u8 {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.inner_vars(),
-            Self::Abs | Self::Vector(_) => 0,
+            Self::Abs | Self::Vector(_) | Self::Matrix(_, _) => 0,
             Self::Custom(_) => todo!(),
         }
     }

@@ -13,6 +13,10 @@ fn main() {
     let block = Compute::parse(options, &expr);
     println!("{block:#?}");
     if let Ok(mut inner) = block {
-        println!("{:#?}", inner.compute());
+        let tmr = std::time::Instant::now();
+        let compute = inner.compute();
+        let time = tmr.elapsed().as_nanos();
+        println!("{compute:#?}");
+        println!("{time}");
     }
 }

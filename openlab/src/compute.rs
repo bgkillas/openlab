@@ -30,7 +30,10 @@ impl<'a> Compute<'a> {
         }
     }
     pub fn compute(&mut self) -> Option<Number> {
-        self.inner.block(&self.block)
+        let old = self.inner.stack.len();
+        let ret = self.inner.block(&self.block);
+        debug_assert_eq!(self.inner.stack.len(), old);
+        ret
     }
 }
 impl ComputeInner {
@@ -98,6 +101,15 @@ impl ComputeInner {
                         }
                         Number::Matrix(_) | Number::List(_) => return None,
                     };
+                    Some(Number::Matrix(mat))
+                }
+            }
+            Function::Matrix(i, j) => {
+                if i == 0 || j == 0 {
+                    Some(Number::Matrix(Matrix::default()))
+                } else {
+                    let dim = MatrixDimension::new(i, j);
+                    let mat = Matrix::new_with_try(dim, |_, _| inputs.next()?.complex())?;
                     Some(Number::Matrix(mat))
                 }
             }
