@@ -9,7 +9,7 @@ use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::ptr::drop_in_place;
 use core::slice;
-use itertools::{IntoChunks, Itertools as _};
+use itertools::Itertools as _;
 #[derive(Default)]
 pub struct Matrix<C>
 where
@@ -210,14 +210,15 @@ impl<C: NumberImpl> Matrix<C> {
     pub fn rows(&self) -> impl Iterator<Item = &[C]> {
         self.entries().chunks_exact(self.width().max(1))
     }
-    pub fn cols(&self) -> IntoChunks<impl Iterator<Item = C>> {
-        (0..self.width())
-            .flat_map(|c| (c..self.size()).step_by(self.width()))
-            .map(|i| self.entries()[i])
-            .chunks(self.height().max(1))
-    }
-    pub fn cols_mut(&mut self) -> ColIter<'_, C> {
+    pub fn cols(&self) -> ColIter<'_, C> {
         ColIter {
+            matrix: NonNull::from_ref(self),
+            entry: 0,
+            phantom: PhantomData,
+        }
+    }
+    pub fn cols_mut(&mut self) -> ColMutIter<'_, C> {
+        ColMutIter {
             matrix: NonNull::from_mut(self),
             entry: 0,
             phantom: PhantomData,
@@ -260,12 +261,12 @@ impl<C: NumberImpl> Matrix<C> {
 pub struct ColIter<'a, C: NumberImpl> {
     matrix: NonNull<Matrix<C>>,
     entry: usize,
-    phantom: PhantomData<fn() -> &'a mut C>,
+    phantom: PhantomData<fn() -> &'a C>,
 }
 impl<'a, C: NumberImpl + 'a> Iterator for ColIter<'a, C> {
     type Item = ColInnerIter<'a, C>;
     fn next(&mut self) -> Option<Self::Item> {
-        if unsafe { self.matrix.as_ref() }.width() >= self.entry {
+        if unsafe { self.matrix.as_ref() }.width() <= self.entry {
             return None;
         }
         let iter = ColInnerIter {
@@ -280,12 +281,48 @@ impl<'a, C: NumberImpl + 'a> Iterator for ColIter<'a, C> {
 pub struct ColInnerIter<'a, C: NumberImpl> {
     matrix: NonNull<Matrix<C>>,
     entry: usize,
-    phantom: PhantomData<fn() -> &'a mut C>,
+    phantom: PhantomData<fn() -> &'a C>,
 }
 impl<'a, C: NumberImpl + 'a> Iterator for ColInnerIter<'a, C> {
+    type Item = &'a C;
+    fn next(&mut self) -> Option<Self::Item> {
+        if unsafe { self.matrix.as_ref() }.size() <= self.entry {
+            return None;
+        }
+        let elem = &unsafe { self.matrix.as_ref() }.entries()[self.entry];
+        self.entry += unsafe { self.matrix.as_ref() }.width();
+        Some(elem)
+    }
+}
+pub struct ColMutIter<'a, C: NumberImpl> {
+    matrix: NonNull<Matrix<C>>,
+    entry: usize,
+    phantom: PhantomData<fn() -> &'a mut C>,
+}
+impl<'a, C: NumberImpl + 'a> Iterator for ColMutIter<'a, C> {
+    type Item = ColMutInnerIter<'a, C>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if unsafe { self.matrix.as_ref() }.width() <= self.entry {
+            return None;
+        }
+        let iter = ColMutInnerIter {
+            matrix: self.matrix,
+            entry: self.entry,
+            phantom: PhantomData,
+        };
+        self.entry += 1;
+        Some(iter)
+    }
+}
+pub struct ColMutInnerIter<'a, C: NumberImpl> {
+    matrix: NonNull<Matrix<C>>,
+    entry: usize,
+    phantom: PhantomData<fn() -> &'a mut C>,
+}
+impl<'a, C: NumberImpl + 'a> Iterator for ColMutInnerIter<'a, C> {
     type Item = &'a mut C;
     fn next(&mut self) -> Option<Self::Item> {
-        if unsafe { self.matrix.as_ref() }.size() >= self.entry {
+        if unsafe { self.matrix.as_ref() }.size() <= self.entry {
             return None;
         }
         let elem = &mut unsafe { self.matrix.as_mut() }.entries_mut()[self.entry];

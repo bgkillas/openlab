@@ -17,7 +17,7 @@ test:
 test_rel:
     cargo nextest run --release -- --nocapture
 bench:
-    cargo bench --quiet -- --color always --test-threads=1 --nocapture
+    cargo bench -- --nocapture
 clippy:
     cargo fmt
     cargo clippy

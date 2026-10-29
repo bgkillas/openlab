@@ -19,7 +19,7 @@ impl<C: NumberImpl> Mul<Self> for &Matrix<C> {
         };
         let mut new = Matrix::<C>::new_uninit(dim);
         let mut vec: Vec<C> = Vec::with_capacity(rhs.height());
-        for (i, col) in rhs.cols().into_iter().enumerate() {
+        for (i, col) in rhs.cols().enumerate() {
             vec.extend(col);
             for (j, row) in self.rows().enumerate() {
                 let index = MatrixIndex::new(j.strict_cast(), i.strict_cast());
