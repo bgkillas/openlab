@@ -4,12 +4,12 @@ use crate::traits::number::NumberImpl;
 use alloc::alloc::Global;
 use core::alloc::{Allocator as _, Layout};
 use core::fmt::{Debug, Formatter};
-use core::iter;
+use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::ptr::drop_in_place;
 use core::slice;
-use itertools::{Either, IntoChunks, Itertools as _};
+use itertools::{IntoChunks, Itertools as _};
 #[derive(Default)]
 pub struct Matrix<C>
 where
@@ -208,32 +208,25 @@ impl<C: NumberImpl> Matrix<C> {
         Some(rows)
     }
     pub fn rows(&self) -> impl Iterator<Item = &[C]> {
-        if self.size() == 0 {
-            Either::Left(iter::empty())
-        } else {
-            Either::Right(self.entries().chunks_exact(self.width()))
-        }
+        self.entries().chunks_exact(self.width().max(1))
     }
     pub fn cols(&self) -> IntoChunks<impl Iterator<Item = C>> {
         (0..self.width())
             .flat_map(|c| (c..self.size()).step_by(self.width()))
             .map(|i| self.entries()[i])
-            .chunks(self.height())
+            .chunks(self.height().max(1))
     }
-    pub fn rows_mut(&mut self) -> impl Iterator<Item = &mut [C]> {
-        if self.size() == 0 {
-            Either::Left(iter::empty())
-        } else {
-            let width = self.width();
-            Either::Right(self.entries_mut().chunks_exact_mut(width))
+    pub fn cols_mut(&mut self) -> ColIter<'_, C> {
+        ColIter {
+            matrix: NonNull::from_mut(self),
+            entry: 0,
+            phantom: PhantomData,
         }
     }
-    /*pub fn cols_mut(&mut self) -> IntoChunks<impl Iterator<Item = &mut C>> {
-        (0..self.width())
-            .flat_map(|c| (c..self.size()).step_by(self.width()))
-            .map(|i| self.entries_mut()[i])
-            .chunks(self.height())
-    }*/
+    pub fn rows_mut(&mut self) -> impl Iterator<Item = &mut [C]> {
+        let width = self.width();
+        self.entries_mut().chunks_exact_mut(width.max(1))
+    }
     pub fn entries_mut(&mut self) -> &mut [C] {
         if let Some(ptr) = self.entries {
             unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), self.size()) }
@@ -262,6 +255,42 @@ impl<C: NumberImpl> Matrix<C> {
         } else {
             &mut []
         }
+    }
+}
+pub struct ColIter<'a, C: NumberImpl> {
+    matrix: NonNull<Matrix<C>>,
+    entry: usize,
+    phantom: PhantomData<fn() -> &'a mut C>,
+}
+impl<'a, C: NumberImpl + 'a> Iterator for ColIter<'a, C> {
+    type Item = ColInnerIter<'a, C>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if unsafe { self.matrix.as_ref() }.width() >= self.entry {
+            return None;
+        }
+        let iter = ColInnerIter {
+            matrix: self.matrix,
+            entry: self.entry,
+            phantom: PhantomData,
+        };
+        self.entry += 1;
+        Some(iter)
+    }
+}
+pub struct ColInnerIter<'a, C: NumberImpl> {
+    matrix: NonNull<Matrix<C>>,
+    entry: usize,
+    phantom: PhantomData<fn() -> &'a mut C>,
+}
+impl<'a, C: NumberImpl + 'a> Iterator for ColInnerIter<'a, C> {
+    type Item = &'a mut C;
+    fn next(&mut self) -> Option<Self::Item> {
+        if unsafe { self.matrix.as_ref() }.size() >= self.entry {
+            return None;
+        }
+        let elem = &mut unsafe { self.matrix.as_mut() }.entries_mut()[self.entry];
+        self.entry += unsafe { self.matrix.as_ref() }.width();
+        Some(elem)
     }
 }
 impl<C: NumberImpl, D: Into<C::NumberReal>, const N: usize, const M: usize> From<[[D; N]; M]>
