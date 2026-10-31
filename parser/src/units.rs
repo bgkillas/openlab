@@ -2,6 +2,7 @@ use crate::options::ParserOptions;
 use crate::parser::{Float, NumberBase, NumberInner};
 use core::f64::consts::PI;
 use core::fmt::Debug;
+use jzon::JsonValue;
 use number::float::real::Real;
 use number::traits::complex::ComplexImpl as _;
 use number::traits::number::NumberImpl as _;
@@ -743,7 +744,8 @@ impl UnitBucket for CurrencyUnit {
                 } else {
                     true
                 }
-            }) {
+            }) && let Some(json) = download_currency_rates()
+            {
                 fs::create_dir_all(dir).ok()?;
                 let mut file = OpenOptions::new()
                     .read(false)
@@ -752,17 +754,14 @@ impl UnitBucket for CurrencyUnit {
                     .create(true)
                     .open(&path)
                     .ok()?;
-                _ = file.write("USD,1\n".as_bytes());
-                if download_currency_rates(|code_temp, rate| {
+                file.write_all("USD,1\n".as_bytes()).ok()?;
+                for opt in parse_json(&json) {
+                    let (code_temp, rate) = opt?;
                     if let Some(unit) = Self::parse(code_temp) {
-                        _ = file.write(format!("{code_temp},{rate}\n").as_bytes());
+                        file.write_all(format!("{code_temp},{rate}\n").as_bytes())
+                            .ok()?;
                         arr[unit.discriminant()] = rate;
                     }
-                })
-                .is_none()
-                {
-                    fs::remove_file(path).unwrap();
-                    return None;
                 }
             } else {
                 let file = OpenOptions::new()
@@ -783,11 +782,13 @@ impl UnitBucket for CurrencyUnit {
                 }
             }
         } else {
-            download_currency_rates(|code_temp, rate| {
+            let json = download_currency_rates()?;
+            for opt in parse_json(&json) {
+                let (code_temp, rate) = opt?;
                 if let Some(unit) = Self::parse(code_temp) {
                     arr[unit.discriminant()] = rate;
                 }
-            })?;
+            }
         }
         *CURRENCY.lock().unwrap() = Some(arr);
         if let Some(currency) = CURRENCY.lock().unwrap().as_ref() {
@@ -870,20 +871,18 @@ impl CurrencyUnit {
         unsafe { core::mem::transmute::<Self, u8>(self) }.strict_cast()
     }
 }
-fn download_currency_rates<F>(mut f: F) -> Option<()>
-where
-    F: FnMut(&str, f64),
-{
+fn download_currency_rates() -> Option<JsonValue> {
     let response = minreq::get("http://www.floatrates.com/daily/usd.json")
         .send()
         .ok()?;
     let body = response.as_str().ok()?;
-    let json = jzon::parse(body).ok()?;
-    for (_, currency) in json.entries() {
-        f(
+    jzon::parse(body).ok()
+}
+fn parse_json(json: &JsonValue) -> impl Iterator<Item = Option<(&str, f64)>> {
+    json.entries().map(|(_, currency)| {
+        Some((
             currency["code"].as_str()?,
             currency["inverseRate"].as_str()?.parse().ok()?,
-        );
-    }
-    Some(())
+        ))
+    })
 }
