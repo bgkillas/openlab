@@ -7,7 +7,6 @@ use number::traits::complex::ComplexImpl as _;
 use number::traits::number::NumberImpl as _;
 use number::units::Units;
 use parser_macros::units;
-use reqwest::blocking;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::{BufRead as _, BufReader, Write as _};
@@ -875,9 +874,11 @@ fn download_currency_rates<F>(mut f: F) -> Option<()>
 where
     F: FnMut(&str, f64),
 {
-    let request = blocking::get("https://www.floatrates.com/daily/usd.json").ok()?;
-    let bytes = request.text().ok()?;
-    let json = jzon::parse(&bytes).ok()?;
+    let response = minreq::get("http://www.floatrates.com/daily/usd.json")
+        .send()
+        .ok()?;
+    let body = response.as_str().ok()?;
+    let json = jzon::parse(body).ok()?;
     for (_, currency) in json.entries() {
         f(
             currency["code"].as_str()?,

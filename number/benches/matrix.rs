@@ -21,7 +21,7 @@ fn matrix(crit: &mut Criterion) {
             |u, _| (size * size - u as u32) as f64,
         ));
         group.bench_function("matrix multiplication", |bencher| {
-            bencher.iter(||a.mul(&b))
+            bencher.iter(|| a.mul(&b))
         });
     }
     {
@@ -34,7 +34,7 @@ fn matrix(crit: &mut Criterion) {
             |u, _| Complex::new_real(Real((size * size - u as u32) as f64)),
         ));
         group.bench_function("matrix multiplication complex", |bencher| {
-            bencher.iter(||a.mul(&b))
+            bencher.iter(|| a.mul(&b))
         });
     }
     {
@@ -47,7 +47,7 @@ fn matrix(crit: &mut Criterion) {
             |u, _| NumberUnits::new((size * size - u as u32) as f64, Units::default()),
         ));
         group.bench_function("matrix multiplication units", |bencher| {
-            bencher.iter(||a.mul(&b))
+            bencher.iter(|| a.mul(&b))
         });
     }
     {
@@ -65,7 +65,7 @@ fn matrix(crit: &mut Criterion) {
             },
         ));
         group.bench_function("matrix multiplication complex units", |bencher| {
-            bencher.iter(||a.mul(&b))
+            bencher.iter(|| a.mul(&b))
         });
     }
     group.finish();

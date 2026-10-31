@@ -1,3 +1,4 @@
+cargo-features = ["panic-immediate-abort"]
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -7,7 +8,7 @@ repository = "https://github.com/bgkillas/openlab"
 inherits = "release"
 lto = true
 strip = true
-panic = "abort"
+panic = "immediate-abort"
 codegen-units = 1
 opt-level = 3
 
@@ -27,7 +28,7 @@ parser_macros = {path = "parser_macros"}
 replace_with = {version = "0.1.8", default-features = false, features = ["std"]}
 itertools = {version = "0.15.0", default-features = false, features = ["use_std"]}
 unicode-segmentation = {version = "1.13.3", default-features = false, features = []}
-reqwest = {version = "0.13.5", default-features = false, features = ["rustls", "blocking"]}
+minreq = {version = "3.0.0", default-features = false, features = []}
 jzon = {version = "0.12.5", default-features = false, features = []}
 dirs = {version = "7.0.0", default-features = false, features = []}
 
