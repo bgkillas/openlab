@@ -45,7 +45,7 @@ pub enum BlockToken<'a> {
     Return(Expression<'a>),
     PrintExpression(Expression<'a>),
     PrintAssignment(Variable, Expression<'a>),
-    PrintReturn(Box<[Self]>),
+    PrintReturn(Expression<'a>),
 }
 #[derive(Clone, Debug)]
 pub enum ParseError {

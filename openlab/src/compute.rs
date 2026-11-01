@@ -52,18 +52,34 @@ impl ComputeInner {
                     println!("{res:?}");
                 }
                 BlockToken::Block(b) => {
-                    let res = self.block(b)?;
+                    let res = self.block(b);
                     if i == block.blocks.len() - 1 {
-                        return ReturnType::Last(res);
+                        return ReturnType::Last(res?);
+                    } else if !matches!(res, ReturnType::None) {
+                        res?;
                     }
                 }
                 BlockToken::Function(_, _) => todo!(),
                 BlockToken::Assignment(_, _) => todo!(),
-                BlockToken::Return(expr) => {
-                    return self.expr(expr).to_return();
-                }
                 BlockToken::PrintAssignment(_, _) => todo!(),
-                BlockToken::PrintReturn(_) => todo!(),
+                BlockToken::Return(expr) => {
+                    return ReturnType::Return(if expr.tokens.is_empty() {
+                        None
+                    } else {
+                        self.expr(expr).option()
+                    });
+                }
+                BlockToken::PrintReturn(expr) => {
+                    return ReturnType::Return(if expr.tokens.is_empty() {
+                        None
+                    } else {
+                        let ret = self.expr(expr).option();
+                        if let Some(res) = &ret {
+                            println!("{res:?}");
+                        }
+                        ret
+                    });
+                }
             }
         }
         ReturnType::None
@@ -161,35 +177,30 @@ impl ComputeInner {
 #[derive(Clone, Copy, Default, Debug)]
 pub enum ReturnType<T> {
     Last(T),
-    Return(T),
+    Return(Option<T>),
+    Break(u32, Option<T>),
+    Continue(u32),
     #[default]
     None,
 }
 impl<T> ReturnType<T> {
-    pub fn unwrap(self) -> T {
-        match self {
-            Self::Last(r) | Self::Return(r) => r,
-            Self::None => unreachable!(),
-        }
-    }
     pub fn option(self) -> Option<T> {
         match self {
-            Self::Last(r) | Self::Return(r) => Some(r),
-            Self::None => None,
+            Self::Last(r) | Self::Return(Some(r)) | Self::Break(_, Some(r)) => Some(r),
+            _ => None,
         }
     }
     pub fn is_return(&self) -> bool {
         matches!(self, Self::Return(_))
     }
+    pub fn is_break(&self) -> bool {
+        matches!(self, Self::Break(_, _))
+    }
+    pub fn is_continue(&self) -> bool {
+        matches!(self, Self::Continue(_))
+    }
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
-    }
-    #[must_use]
-    pub fn to_return(self) -> Self {
-        match self {
-            Self::Last(r) | Self::Return(r) => Self::Return(r),
-            Self::None => Self::None,
-        }
     }
 }
 impl<T> Residual<T> for ReturnType<T> {
@@ -209,7 +220,7 @@ impl<T> Try for ReturnType<T> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Self::Last(c) => ControlFlow::Continue(c),
-            c @ Self::Return(_) => ControlFlow::Break(c),
+            c @ (Self::Return(_) | Self::Break(_, _) | Self::Continue(_)) => ControlFlow::Break(c),
             Self::None => ControlFlow::Break(Self::None),
         }
     }
