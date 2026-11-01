@@ -1,5 +1,6 @@
 use core::iter;
 use core::ops::{Add, Div, Mul, Sub};
+use core::ops::{ControlFlow, FromResidual, Residual, Try};
 use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
 use parser::number::matrix::size::MatrixDimension;
@@ -33,33 +34,47 @@ impl<'a> Compute<'a> {
         let old = self.inner.stack.len();
         let ret = self.inner.block(&self.block);
         debug_assert_eq!(self.inner.stack.len(), old);
-        ret
+        ret.option()
     }
 }
 impl ComputeInner {
-    pub fn block(&mut self, block: &Block<'_>) -> Option<Number> {
+    pub fn block(&mut self, block: &Block<'_>) -> ReturnType<Number> {
         for (i, block_token) in block.blocks.iter().enumerate() {
             match block_token {
                 BlockToken::Expression(expr) => {
                     self.expr(expr);
                 }
                 BlockToken::PrintExpression(expr) => {
-                    let res = self.expr(expr);
+                    let res = self.expr(expr)?;
                     if i == block.blocks.len() - 1 {
-                        return res;
+                        return ReturnType::Last(res);
                     }
                     println!("{res:?}");
                 }
-                _ => todo!(),
+                BlockToken::Block(b) => {
+                    let res = self.block(b)?;
+                    if i == block.blocks.len() - 1 {
+                        return ReturnType::Last(res);
+                    }
+                }
+                BlockToken::Function(_, _) => todo!(),
+                BlockToken::Assignment(_, _) => todo!(),
+                BlockToken::Return(expr) => {
+                    return self.expr(expr).to_return();
+                }
+                BlockToken::PrintAssignment(_, _) => todo!(),
+                BlockToken::PrintReturn(_) => todo!(),
             }
         }
-        None
+        ReturnType::None
     }
-    fn expr(&mut self, expr: &Expression) -> Option<Number> {
+    fn expr(&mut self, expr: &Expression) -> ReturnType<Number> {
         for token in &expr.tokens {
             let number = match token {
                 ExpressionToken::Number(num) => num.clone(),
-                &ExpressionToken::Function(fun) => self.fun(fun)?,
+                &ExpressionToken::Function(fun) => {
+                    self.fun(fun).map_or_default(ReturnType::Last)?
+                }
                 ExpressionToken::Variable(_) => todo!(),
                 ExpressionToken::Skip(_) => todo!(),
                 ExpressionToken::Block(block) => self.block(block)?,
@@ -68,7 +83,7 @@ impl ComputeInner {
         }
         let res = self.stack.pop();
         debug_assert_eq!(self.stack, []);
-        res
+        res.map_or_default(ReturnType::Last)
     }
     fn fun(&mut self, fun: Function) -> Option<Number> {
         let mut inputs = self.stack.drain(
@@ -140,6 +155,62 @@ impl ComputeInner {
                 Operator::Identity | Operator::Negate | Operator::Transpose => unreachable!(),
             },
             _ => todo!(),
+        }
+    }
+}
+#[derive(Clone, Copy, Default, Debug)]
+pub enum ReturnType<T> {
+    Last(T),
+    Return(T),
+    #[default]
+    None,
+}
+impl<T> ReturnType<T> {
+    pub fn unwrap(self) -> T {
+        match self {
+            Self::Last(r) | Self::Return(r) => r,
+            Self::None => unreachable!(),
+        }
+    }
+    pub fn option(self) -> Option<T> {
+        match self {
+            Self::Last(r) | Self::Return(r) => Some(r),
+            Self::None => None,
+        }
+    }
+    pub fn is_return(&self) -> bool {
+        matches!(self, Self::Return(_))
+    }
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+    #[must_use]
+    pub fn to_return(self) -> Self {
+        match self {
+            Self::Last(r) | Self::Return(r) => Self::Return(r),
+            Self::None => Self::None,
+        }
+    }
+}
+impl<T> Residual<T> for ReturnType<T> {
+    type TryType = Self;
+}
+impl<T> FromResidual<Self> for ReturnType<T> {
+    fn from_residual(residual: Self) -> Self {
+        residual
+    }
+}
+impl<T> Try for ReturnType<T> {
+    type Output = T;
+    type Residual = Self;
+    fn from_output(output: Self::Output) -> Self {
+        Self::Last(output)
+    }
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            Self::Last(c) => ControlFlow::Continue(c),
+            c @ Self::Return(_) => ControlFlow::Break(c),
+            Self::None => ControlFlow::Break(Self::None),
         }
     }
 }

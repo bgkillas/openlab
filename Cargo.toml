@@ -31,8 +31,9 @@ unicode-segmentation = {version = "1.13.3", default-features = false, features =
 minreq = {version = "3.0.0", default-features = false, features = []}
 jzon = {version = "0.12.5", default-features = false, features = []}
 dirs = {version = "7.0.0", default-features = false, features = []}
+#stacker = {version = "0.1.25", default-features = false, features = []}
 
-criterion = {version = "0.8.2", default-features = false, features = ["default"]}
+criterion = {version = "0.8.2", default-features = false, features = []}
 
 [workspace.lints.clippy]
 pedantic = {level = "warn", priority = -1}

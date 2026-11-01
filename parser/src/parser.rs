@@ -41,12 +41,11 @@ pub enum BlockToken<'a> {
     Block(Block<'a>),
     Function(&'a str, Block<'a>),
     Expression(Expression<'a>),
-    Assignment(Variable, Box<[Self]>),
-    Return(Box<[Self]>),
+    Assignment(Variable, Expression<'a>),
+    Return(Expression<'a>),
     PrintExpression(Expression<'a>),
-    PrintAssignment(Variable, Box<[Self]>),
+    PrintAssignment(Variable, Expression<'a>),
     PrintReturn(Box<[Self]>),
-    Last(Box<[Self]>),
 }
 #[derive(Clone, Debug)]
 pub enum ParseError {
