@@ -135,6 +135,16 @@ impl ComputeInner {
                     Some(Number::Matrix(mat))
                 }
             }
+            Function::List(i) => {
+                if i == 0 {
+                    Some(Number::List(Vec::new()))
+                } else {
+                    let vec = iter::repeat_with(next)
+                        .take(usize::try_from(i).unwrap())
+                        .collect();
+                    Some(Number::List(vec))
+                }
+            }
             Function::Matrix(i, j) => {
                 if i == 0 || j == 0 {
                     Some(Number::Matrix(Matrix::default()))

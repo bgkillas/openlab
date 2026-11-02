@@ -53,6 +53,7 @@ pub enum ParseError {
     TooMuchInput,
     LexerError,
     UnexpectedToken,
+    NoBracketAfterFunction,
 }
 impl<'a> Block<'a> {
     pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
@@ -80,7 +81,6 @@ impl<'a> Block<'a> {
                 LexerToken::Word("let") => todo!(),
                 LexerToken::Word("mut") => todo!(),
                 LexerToken::Word("return") => todo!(),
-                LexerToken::LeftParenthesis => todo!(),
                 _ => BlockToken::parse_expression(options, tokens)?,
             };
             blocks.push(part);
@@ -111,11 +111,9 @@ impl State<'_> {
     fn push_operator(&mut self, operator: OperatorToken) {
         self.input_left = operator.is_unary() && !operator.unary_left();
         if matches!(operator, OperatorToken::LeftBracket(_)) {
+            self.fn_inputs.push(0);
             self.operator_stack.push(operator);
             return;
-        }
-        if matches!(operator, OperatorToken::Function(_)) {
-            self.fn_inputs.push(0);
         }
         while let Some(top) = self.operator_stack.pop_if(|top| {
             !matches!(
@@ -231,14 +229,14 @@ impl State<'_> {
                     .push(ExpressionToken::Function(Function::Abs));
             }
             Bracket::Parenthesis => {
+                let mut inputs = self.fn_inputs.pop().unwrap();
+                if self.input_left {
+                    inputs += 1;
+                }
                 if let Some(OperatorToken::Function(fun)) = self
                     .operator_stack
                     .pop_if(|o| matches!(o, OperatorToken::Function(_)))
                 {
-                    let mut inputs = self.fn_inputs.pop().unwrap();
-                    if self.input_left {
-                        inputs += 1;
-                    }
                     if !fun.input_range().contains(&inputs) {
                         return Err(if fun.input_range().start < inputs {
                             ParseError::MissingInput
@@ -247,6 +245,9 @@ impl State<'_> {
                         });
                     }
                     self.expression.push(ExpressionToken::Function(fun));
+                } else if inputs != 1 || !self.input_left {
+                    self.expression
+                        .push(ExpressionToken::Function(Function::List(inputs)));
                 }
             }
             Bracket::Square => {
@@ -254,6 +255,7 @@ impl State<'_> {
                 if self.input_left {
                     inputs += 1;
                 }
+                println!("{inputs}");
                 let vec = if let Some(width) = self.optimize_matrix(inputs) {
                     Function::Matrix(width, inputs)
                 } else {
@@ -289,7 +291,6 @@ impl<'a> BlockToken<'a> {
                 }
                 LexerToken::RightParenthesis => state.close_off_bracket(Bracket::Parenthesis)?,
                 LexerToken::LeftSquareBracket => {
-                    state.fn_inputs.push(0);
                     state.push_operator(OperatorToken::LeftBracket(Bracket::Square));
                 }
                 LexerToken::RightSquareBracket => state.close_off_bracket(Bracket::Square)?,
