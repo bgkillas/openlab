@@ -3,18 +3,20 @@ use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
 use parser::operators::Operator;
 use parser::options::ParserOptions;
-use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number};
+use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, Variable};
 use parser::units::{Dimension, DistanceUnit, MetricPrefix, Prefix, TimeUnit, Unit};
 fn block<const N: usize>(blocks: [BlockToken<'_>; N]) -> Block<'_> {
     Block {
         blocks: Box::new(blocks),
     }
 }
+fn block_token<const N: usize>(blocks: [BlockToken<'_>; N]) -> BlockToken<'_> {
+    BlockToken::Block(block(blocks))
+}
 #[expect(unused)]
 fn pexpr<'a>(options: ParserOptions<'a>, s: &'a str) -> BlockToken<'a> {
     BlockToken::parse_expression_str(options, s).unwrap()
 }
-#[expect(unused)]
 fn expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
     BlockToken::Expression(Expression {
         tokens: Box::new(blocks),
@@ -24,6 +26,26 @@ fn print_expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_
     BlockToken::PrintExpression(Expression {
         tokens: Box::new(blocks),
     })
+}
+fn var(var: u32) -> ExpressionToken<'static> {
+    ExpressionToken::Variable(Variable::Variable(var))
+}
+fn let_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
+    BlockToken::Assignment(
+        Variable::Variable(var),
+        Expression {
+            tokens: Box::new(blocks),
+        },
+    )
+}
+#[expect(unused)]
+fn let_print_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
+    BlockToken::PrintAssignment(
+        Variable::Variable(var),
+        Expression {
+            tokens: Box::new(blocks),
+        },
+    )
 }
 fn number(f: f64) -> Number {
     Number::Complex(f.into())
@@ -143,5 +165,48 @@ fn parse_mat() {
             expr_fun(Function::Vector(2)),
         ])]),
         Some(mat([[2.0, 3.0, 4.0], [2.0, 1.0, 3.0]])),
+    )
+}
+#[test]
+fn var_test() {
+    let options = ParserOptions::new(None);
+    assert_block(
+        options,
+        "   let a = 2;\
+            let b = 3;\
+            {
+                let a = 2a;
+                let b = 2a*b;
+                assert_eq(a,4);
+                assert_eq(b,24);
+            }
+            let c = 4;
+            assert_eq(c,4);
+            assert_eq(a,2);
+            assert_eq(b,3);",
+        block([
+            let_expr(0, [expr_number(2.0)]),
+            let_expr(1, [expr_number(3.0)]),
+            block_token([
+                let_expr(2, [expr_number(2.0), var(0), expr_op(Operator::MulInner)]),
+                let_expr(
+                    3,
+                    [
+                        expr_number(2.0),
+                        var(0),
+                        expr_op(Operator::MulInner),
+                        var(1),
+                        expr_op(Operator::Mul),
+                    ],
+                ),
+                print_expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
+                print_expr([var(3), expr_number(24.0), expr_fun(Function::AssertEq)]),
+            ]),
+            let_expr(2, [expr_number(4.0)]),
+            print_expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
+            print_expr([var(0), expr_number(2.0), expr_fun(Function::AssertEq)]),
+            print_expr([var(1), expr_number(3.0), expr_fun(Function::AssertEq)]),
+        ]),
+        None,
     )
 }

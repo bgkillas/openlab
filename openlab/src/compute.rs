@@ -187,6 +187,14 @@ impl ComputeInner {
                     Some(Number::Matrix(mat))
                 }
             }
+            Function::AssertEq => {
+                let a = next();
+                let b = next();
+                if a != b {
+                    println!("{a:?} does not equal {b:?}");
+                }
+                None
+            }
             Function::Operator(o) => match o {
                 Operator::Add => next() + next(),
                 Operator::Sub => next() - next(),

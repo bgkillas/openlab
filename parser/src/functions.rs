@@ -6,6 +6,7 @@ pub enum Function {
     Operator(Operator),
     ComponentWise(Operator),
     Abs,
+    AssertEq,
     Vector(u32),
     Matrix(u32, u32),
     List(u32),
@@ -20,6 +21,7 @@ impl FromStr for Function {
             "mul" => Self::Operator(Operator::Mul),
             "div" => Self::Operator(Operator::Div),
             "pow" => Self::Operator(Operator::Pow),
+            "assert_eq" => Self::AssertEq,
             "transpose" => Self::Operator(Operator::Transpose),
             _ => return Err(()),
         })
@@ -30,6 +32,7 @@ impl Function {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.input_range(),
             Self::Abs => 1..2,
+            Self::AssertEq => 2..3,
             Self::Vector(_) | Self::Matrix(_, _) | Self::List(_) => 0..u32::MAX,
             Self::Custom(_) => todo!(),
         }
@@ -38,6 +41,7 @@ impl Function {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.inputs(),
             Self::Abs => 1,
+            Self::AssertEq => 2,
             Self::Vector(v) | Self::List(v) => v,
             Self::Matrix(v, l) => v * l,
             Self::Custom(_) => todo!(),
@@ -46,7 +50,7 @@ impl Function {
     pub fn inner_vars(self) -> u8 {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.inner_vars(),
-            Self::Abs | Self::Vector(_) | Self::Matrix(_, _) | Self::List(_) => 0,
+            Self::Abs | Self::AssertEq | Self::Vector(_) | Self::Matrix(_, _) | Self::List(_) => 0,
             Self::Custom(_) => todo!(),
         }
     }

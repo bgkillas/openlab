@@ -9,7 +9,7 @@ use lexer::token::{LexerItem, LexerToken};
 use number::float::complex::Complex;
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
-use std::assert_matches;
+use std::debug_assert_matches;
 pub type Float = f64;
 pub type NumberBase = Complex<Float>;
 pub type NumberInner = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
@@ -116,8 +116,9 @@ impl<'a> State<'a> {
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<BlockToken<'a>, ParseError> {
-        assert_matches!(
-            tokens.next(),
+        let tkn = tokens.next();
+        debug_assert_matches!(
+            tkn,
             Some(LexerItem {
                 token: LexerToken::Word("let"),
                 range: _
