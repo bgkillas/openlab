@@ -5,10 +5,11 @@ use crate::units::{Dimension, UNIT_COUNT, UnitType};
 use core::str::FromStr as _;
 use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
-use lexer::token::LexerToken;
+use lexer::token::{LexerItem, LexerToken};
 use number::float::complex::Complex;
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
+use std::assert_matches;
 pub type Float = f64;
 pub type NumberBase = Complex<Float>;
 pub type NumberInner = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
@@ -30,7 +31,6 @@ pub enum ExpressionToken<'a> {
     Number(Number),
     Variable(Variable),
     Function(Function),
-    Skip(u32),
 }
 #[derive(PartialEq, Clone, Default, Debug)]
 pub struct Block<'a> {
@@ -64,6 +64,7 @@ impl<'a> Block<'a> {
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<Self, ParseError> {
+        let mut state = State::default();
         let mut blocks = Vec::new();
         while let Some(token) = tokens.peek() {
             let part = match token.token {
@@ -78,10 +79,10 @@ impl<'a> Block<'a> {
                 LexerToken::Word("break") => todo!(),
                 LexerToken::Word("continue") => todo!(),
                 LexerToken::Word("fn") => todo!(),
-                LexerToken::Word("let") => todo!(),
+                LexerToken::Word("let") => state.parse_let(options, tokens)?,
                 LexerToken::Word("mut") => todo!(),
                 LexerToken::Word("return") => todo!(),
-                _ => BlockToken::parse_expression(options, tokens)?,
+                _ => state.parse_expression(options, tokens)?,
             };
             blocks.push(part);
         }
@@ -95,6 +96,7 @@ pub(crate) struct State<'a> {
     pub operator_stack: Vec<OperatorToken>,
     pub fn_inputs: Vec<u32>,
     pub input_left: bool,
+    pub variables: Vec<&'a str>,
 }
 #[expect(clippy::derivable_impls)]
 impl Default for State<'_> {
@@ -104,10 +106,43 @@ impl Default for State<'_> {
             operator_stack: Vec::new(),
             fn_inputs: Vec::new(),
             input_left: false,
+            variables: Vec::new(),
         }
     }
 }
-impl State<'_> {
+impl<'a> State<'a> {
+    fn parse_let(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<BlockToken<'a>, ParseError> {
+        assert_matches!(
+            tokens.next(),
+            Some(LexerItem {
+                token: LexerToken::Word("let"),
+                range: _
+            })
+        );
+        let token = tokens
+            .next()
+            .map_or(Err(ParseError::MissingInput), |t| Ok(t.token))?;
+        let var = Variable::Variable(self.variables.len().strict_cast());
+        match token {
+            LexerToken::Word(word) => {
+                self.variables.push(word);
+            }
+            _ => return Err(ParseError::UnexpectedToken),
+        }
+        if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
+            return Err(ParseError::UnexpectedToken);
+        }
+        let expr = self.parse_expression(options, tokens)?;
+        Ok(match expr {
+            BlockToken::Expression(exp) => BlockToken::Assignment(var, exp),
+            BlockToken::PrintExpression(exp) => BlockToken::PrintAssignment(var, exp),
+            _ => unreachable!(),
+        })
+    }
     fn push_operator(&mut self, operator: OperatorToken) {
         self.input_left = operator.is_unary() && !operator.unary_left();
         if matches!(operator, OperatorToken::LeftBracket(_)) {
@@ -131,6 +166,14 @@ impl State<'_> {
                 .push(ExpressionToken::Function(Function::from(top)));
         }
         self.operator_stack.push(operator);
+    }
+    fn push_variable(&mut self, var: u32) {
+        if self.input_left {
+            self.push_operator(OperatorToken::Operator(Operator::MulInner));
+        }
+        self.input_left = true;
+        self.expression
+            .push(ExpressionToken::Variable(Variable::Variable(var)));
     }
     fn push_number(&mut self, number: NumberInner) {
         if self.input_left {
@@ -177,7 +220,7 @@ impl State<'_> {
         }
         let mut inputs = height - 1;
         let mut inner_inputs = width;
-        let mut pos = Vec::with_capacity(usize::try_from(height).unwrap());
+        let mut pos = Vec::with_capacity(height.strict_cast());
         for (i, token) in iter.enumerate() {
             match token {
                 ExpressionToken::Block(_)
@@ -202,9 +245,6 @@ impl State<'_> {
                     } else {
                         inner_inputs += f.inputs() - 1;
                     }
-                }
-                ExpressionToken::Skip(_) => {
-                    unreachable!()
                 }
             }
         }
@@ -267,6 +307,78 @@ impl State<'_> {
         self.input_left = true;
         Ok(())
     }
+    pub fn parse_expression(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<BlockToken<'a>, ParseError> {
+        self.reset();
+        let mut print = true;
+        while let Some(token) = tokens.next() {
+            match token.token {
+                LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
+                LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
+                LexerToken::LeftParenthesis => {
+                    self.push_operator(OperatorToken::LeftBracket(Bracket::Parenthesis));
+                }
+                LexerToken::RightParenthesis => self.close_off_bracket(Bracket::Parenthesis)?,
+                LexerToken::LeftSquareBracket => {
+                    self.push_operator(OperatorToken::LeftBracket(Bracket::Square));
+                }
+                LexerToken::RightSquareBracket => self.close_off_bracket(Bracket::Square)?,
+                LexerToken::Numeric(base, whole, part) => {
+                    let number =
+                        NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
+                    self.push_number(number);
+                }
+                LexerToken::NewLine => {
+                    break;
+                }
+                LexerToken::SemiColon => {
+                    print = false;
+                    break;
+                }
+                LexerToken::Comma => {
+                    self.input_left = false;
+                    self.close_expr();
+                    if let Some(last) = self.fn_inputs.last_mut() {
+                        *last = last.checked_add(1).unwrap();
+                    }
+                }
+                LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
+                    self.push_operator(OperatorToken::Function(fun));
+                }
+                LexerToken::Word(str)
+                    if let Some(var) = self.variables.iter().position(|&s| s == str) =>
+                {
+                    self.push_variable(var.strict_cast());
+                }
+                LexerToken::Word(str) if let Some(num) = Dimension::parse(options, str) => {
+                    self.push_number(num);
+                }
+                t if let Some(op) = OperatorToken::parse(self, t, tokens) => {
+                    self.push_operator(op);
+                }
+                _ => return Err(ParseError::UnexpectedToken),
+            }
+        }
+        self.end()?;
+        let expression = Expression {
+            tokens: self.expression.drain(..).collect(),
+        };
+        self.reset();
+        Ok(if print {
+            BlockToken::PrintExpression(expression)
+        } else {
+            BlockToken::Expression(expression)
+        })
+    }
+    pub fn reset(&mut self) {
+        self.input_left = false;
+        debug_assert_eq!(self.expression, []);
+        debug_assert_eq!(self.operator_stack, []);
+        debug_assert_eq!(self.fn_inputs, [0; 0]);
+    }
 }
 impl<'a> BlockToken<'a> {
     pub fn parse_expression_str(
@@ -274,62 +386,7 @@ impl<'a> BlockToken<'a> {
         s: &'a str,
     ) -> Result<Self, ParseError> {
         let mut tokens = peek_nth(LexerIter::new(s));
-        Self::parse_expression(options, &mut tokens)
-    }
-    pub fn parse_expression(
-        options: ParserOptions<'_>,
-        tokens: &mut PeekNth<LexerIter<'a>>,
-    ) -> Result<Self, ParseError> {
         let mut state = State::default();
-        let mut print = true;
-        while let Some(token) = tokens.next() {
-            match token.token {
-                LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
-                LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
-                LexerToken::LeftParenthesis => {
-                    state.push_operator(OperatorToken::LeftBracket(Bracket::Parenthesis));
-                }
-                LexerToken::RightParenthesis => state.close_off_bracket(Bracket::Parenthesis)?,
-                LexerToken::LeftSquareBracket => {
-                    state.push_operator(OperatorToken::LeftBracket(Bracket::Square));
-                }
-                LexerToken::RightSquareBracket => state.close_off_bracket(Bracket::Square)?,
-                LexerToken::Numeric(base, whole, part) => {
-                    let number =
-                        NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
-                    state.push_number(number);
-                }
-                LexerToken::SemiColon => {
-                    state.input_left = false;
-                    print = false;
-                }
-                LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
-                    state.push_operator(OperatorToken::Function(fun));
-                }
-                LexerToken::Comma => {
-                    state.input_left = false;
-                    state.close_expr();
-                    if let Some(last) = state.fn_inputs.last_mut() {
-                        *last = last.checked_add(1).unwrap();
-                    }
-                }
-                LexerToken::Word(str) if let Some(num) = Dimension::parse(options, str) => {
-                    state.push_number(num);
-                }
-                t if let Some(op) = OperatorToken::parse(&state, t, tokens) => {
-                    state.push_operator(op);
-                }
-                _ => return Err(ParseError::UnexpectedToken),
-            }
-        }
-        state.end()?;
-        let expression = Expression {
-            tokens: state.expression.into_boxed_slice(),
-        };
-        Ok(if print {
-            Self::PrintExpression(expression)
-        } else {
-            Self::Expression(expression)
-        })
+        state.parse_expression(options, &mut tokens)
     }
 }

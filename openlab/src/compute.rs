@@ -7,7 +7,9 @@ use parser::number::matrix::size::MatrixDimension;
 use parser::number::traits::pow::{Pow, Root};
 use parser::operators::Operator;
 use parser::options::ParserOptions;
-use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, ParseError};
+use parser::parser::{
+    Block, BlockToken, Expression, ExpressionToken, Number, ParseError, Variable,
+};
 #[derive(Debug, Default)]
 struct ComputeInner {
     stack: Vec<Number>,
@@ -39,10 +41,18 @@ impl<'a> Compute<'a> {
 }
 impl ComputeInner {
     pub fn block(&mut self, block: &Block<'_>) -> ReturnType<Number> {
+        let len = self.stack.len();
+        let mut var_count = 0;
+        let ret = self.block_inner(block, &mut var_count);
+        self.stack.drain(self.stack.len() - var_count..);
+        debug_assert_eq!(self.stack.len(), len);
+        ret
+    }
+    fn block_inner(&mut self, block: &Block<'_>, var_count: &mut usize) -> ReturnType<Number> {
         for (i, block_token) in block.blocks.iter().enumerate() {
             match block_token {
                 BlockToken::Expression(expr) => {
-                    self.expr(expr);
+                    self.expr(expr)?;
                 }
                 BlockToken::PrintExpression(expr) => {
                     let res = self.expr(expr)?;
@@ -60,8 +70,15 @@ impl ComputeInner {
                     }
                 }
                 BlockToken::Function(_, _) => todo!(),
-                BlockToken::Assignment(_, _) => todo!(),
-                BlockToken::PrintAssignment(_, _) => todo!(),
+                BlockToken::Assignment(var, expr) => {
+                    let number = self.expr(expr)?;
+                    self.var(*var, number, var_count);
+                }
+                BlockToken::PrintAssignment(var, expr) => {
+                    let number = self.expr(expr)?;
+                    println!("{number:?}");
+                    self.var(*var, number, var_count);
+                }
                 BlockToken::Return(expr) => {
                     return ReturnType::Return(if expr.tokens.is_empty() {
                         None
@@ -84,21 +101,39 @@ impl ComputeInner {
         }
         ReturnType::None
     }
+    fn var(&mut self, var: Variable, number: Number, var_count: &mut usize) {
+        match var {
+            Variable::Variable(v) => {
+                if self.stack.len() == v.strict_cast::<usize>() {
+                    *var_count += 1;
+                    self.stack.push(number);
+                } else {
+                    self.stack[v.strict_cast::<usize>()] = number;
+                }
+            }
+            Variable::Function(_) => todo!(),
+            Variable::Global(_) => todo!(),
+            Variable::None => todo!(),
+        }
+    }
     fn expr(&mut self, expr: &Expression) -> ReturnType<Number> {
+        let len = self.stack.len();
         for token in &expr.tokens {
             let number = match token {
                 ExpressionToken::Number(num) => num.clone(),
                 &ExpressionToken::Function(fun) => {
                     self.fun(fun).map_or_default(ReturnType::Last)?
                 }
+                &ExpressionToken::Variable(Variable::Variable(v)) => {
+                    self.stack[v.strict_cast::<usize>()].clone()
+                }
                 ExpressionToken::Variable(_) => todo!(),
-                ExpressionToken::Skip(_) => todo!(),
                 ExpressionToken::Block(block) => self.block(block)?,
             };
             self.stack.push(number);
         }
         let res = self.stack.pop();
-        debug_assert_eq!(self.stack, []);
+        debug_assert_eq!(self.stack.len(), len);
         res.map_or_default(ReturnType::Last)
     }
     fn fun(&mut self, fun: Function) -> Option<Number> {
@@ -139,9 +174,7 @@ impl ComputeInner {
                 if i == 0 {
                     Some(Number::List(Vec::new()))
                 } else {
-                    let vec = iter::repeat_with(next)
-                        .take(usize::try_from(i).unwrap())
-                        .collect();
+                    let vec = iter::repeat_with(next).take(i.strict_cast()).collect();
                     Some(Number::List(vec))
                 }
             }
