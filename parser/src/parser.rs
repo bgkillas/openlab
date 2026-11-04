@@ -65,31 +65,7 @@ impl<'a> Block<'a> {
         tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<Self, ParseError> {
         let mut state = State::default();
-        let mut blocks = Vec::new();
-        while let Some(token) = tokens.peek() {
-            let part = match token.token {
-                LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
-                LexerToken::Word("if") => todo!(),
-                LexerToken::Word("else") => todo!(),
-                LexerToken::SingleQuote => todo!(),
-                LexerToken::Word("for") => todo!(),
-                LexerToken::Word("in") => todo!(),
-                LexerToken::Word("while") => todo!(),
-                LexerToken::Word("loop") => todo!(),
-                LexerToken::Word("break") => todo!(),
-                LexerToken::Word("continue") => todo!(),
-                LexerToken::Word("fn") => todo!(),
-                LexerToken::Word("let") => state.parse_let(options, tokens)?,
-                LexerToken::Word("mut") => todo!(),
-                LexerToken::Word("return") => todo!(),
-                LexerToken::LeftCurlyBracket => todo!(),
-                _ => state.parse_expression(options, tokens)?,
-            };
-            blocks.push(part);
-        }
-        Ok(Self {
-            blocks: blocks.into_boxed_slice(),
-        })
+        state.parse_block(options, tokens)
     }
 }
 pub(crate) struct State<'a> {
@@ -112,6 +88,47 @@ impl Default for State<'_> {
     }
 }
 impl<'a> State<'a> {
+    fn parse_block(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<Block<'a>, ParseError> {
+        let mut blocks = Vec::new();
+        while let Some(token) = tokens.peek() {
+            let part = match token.token {
+                LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
+                LexerToken::Word("if") => todo!(),
+                LexerToken::Word("else") => todo!(),
+                LexerToken::SingleQuote => todo!(),
+                LexerToken::Word("for") => todo!(),
+                LexerToken::Word("in") => todo!(),
+                LexerToken::Word("while") => todo!(),
+                LexerToken::Word("loop") => todo!(),
+                LexerToken::Word("break") => todo!(),
+                LexerToken::Word("continue") => todo!(),
+                LexerToken::Word("fn") => todo!(),
+                LexerToken::Word("let") => self.parse_let(options, tokens)?,
+                LexerToken::Word("mut") => todo!(),
+                LexerToken::Word("return") => todo!(),
+                LexerToken::LeftCurlyBracket => {
+                    tokens.next();
+                    let len = self.variables.len();
+                    let block = self.parse_block(options, tokens)?;
+                    self.variables.drain(len..);
+                    BlockToken::Block(block)
+                }
+                LexerToken::RightCurlyBracket => {
+                    tokens.next();
+                    break;
+                }
+                _ => self.parse_expression(options, tokens)?,
+            };
+            blocks.push(part);
+        }
+        Ok(Block {
+            blocks: blocks.into_boxed_slice(),
+        })
+    }
     fn parse_let(
         &mut self,
         options: ParserOptions<'_>,
@@ -129,16 +146,16 @@ impl<'a> State<'a> {
             .next()
             .map_or(Err(ParseError::MissingInput), |t| Ok(t.token))?;
         let var = Variable::Variable(self.variables.len().strict_cast());
+        if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
+            return Err(ParseError::UnexpectedToken);
+        }
+        let expr = self.parse_expression(options, tokens)?;
         match token {
             LexerToken::Word(word) => {
                 self.variables.push(word);
             }
             _ => return Err(ParseError::UnexpectedToken),
         }
-        if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
-            return Err(ParseError::UnexpectedToken);
-        }
-        let expr = self.parse_expression(options, tokens)?;
         Ok(match expr {
             BlockToken::Expression(exp) => BlockToken::Assignment(var, exp),
             BlockToken::PrintExpression(exp) => BlockToken::PrintAssignment(var, exp),
@@ -297,7 +314,6 @@ impl<'a> State<'a> {
                 if self.input_left {
                     inputs += 1;
                 }
-                println!("{inputs}");
                 let vec = if let Some(width) = self.optimize_matrix(inputs) {
                     Function::Matrix(width, inputs)
                 } else {
@@ -351,7 +367,7 @@ impl<'a> State<'a> {
                     self.push_operator(OperatorToken::Function(fun));
                 }
                 LexerToken::Word(str)
-                    if let Some(var) = self.variables.iter().position(|&s| s == str) =>
+                    if let Some(var) = self.variables.iter().rposition(|&s| s == str) =>
                 {
                     self.push_variable(var.strict_cast());
                 }

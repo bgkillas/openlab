@@ -17,7 +17,6 @@ fn block_token<const N: usize>(blocks: [BlockToken<'_>; N]) -> BlockToken<'_> {
 fn pexpr<'a>(options: ParserOptions<'a>, s: &'a str) -> BlockToken<'a> {
     BlockToken::parse_expression_str(options, s).unwrap()
 }
-#[expect(unused)]
 fn expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
     BlockToken::Expression(Expression {
         tokens: Box::new(blocks),
@@ -76,11 +75,11 @@ fn assert_block(
     stdout: &str,
     res: Option<Number>,
 ) {
-    assert_eq!(Block::parse(options, s).unwrap(), block);
+    assert_eq!(block, Block::parse(options, s).unwrap());
     let mut compute = Compute::from_block_str(block);
     let (ret, str) = compute.compute_str();
-    assert_eq!(ret, res);
-    assert_eq!(str, stdout);
+    assert_eq!(res, ret);
+    assert_eq!(stdout, str);
 }
 #[test]
 fn parse_add() {
@@ -205,19 +204,19 @@ fn var_test() {
                     3,
                     [
                         expr_number(2.0),
-                        var(0),
+                        var(2),
                         expr_op(Operator::MulInner),
                         var(1),
                         expr_op(Operator::Mul),
                     ],
                 ),
-                print_expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
-                print_expr([var(3), expr_number(24.0), expr_fun(Function::AssertEq)]),
+                expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
+                expr([var(3), expr_number(24.0), expr_fun(Function::AssertEq)]),
             ]),
             let_expr(2, [expr_number(4.0)]),
-            print_expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
-            print_expr([var(0), expr_number(2.0), expr_fun(Function::AssertEq)]),
-            print_expr([var(1), expr_number(3.0), expr_fun(Function::AssertEq)]),
+            expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
+            expr([var(0), expr_number(2.0), expr_fun(Function::AssertEq)]),
+            expr([var(1), expr_number(3.0), expr_fun(Function::AssertEq)]),
         ]),
         "",
         None,

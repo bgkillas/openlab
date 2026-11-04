@@ -93,13 +93,11 @@ impl<S: Write> ComputeInner<S> {
     }
     pub fn block(&mut self, block: &Block<'_>) -> ReturnType<Number> {
         let len = self.stack.len();
-        let mut var_count = 0;
-        let ret = self.block_inner(block, &mut var_count);
-        self.stack.drain(self.stack.len() - var_count..);
-        debug_assert_eq!(self.stack.len(), len);
+        let ret = self.block_inner(block);
+        self.stack.drain(len..);
         ret
     }
-    fn block_inner(&mut self, block: &Block<'_>, var_count: &mut usize) -> ReturnType<Number> {
+    fn block_inner(&mut self, block: &Block<'_>) -> ReturnType<Number> {
         for (i, block_token) in block.blocks.iter().enumerate() {
             match block_token {
                 BlockToken::Expression(expr) => {
@@ -123,12 +121,12 @@ impl<S: Write> ComputeInner<S> {
                 BlockToken::Function(_, _) => todo!(),
                 BlockToken::Assignment(var, expr) => {
                     let number = self.expr(expr)?;
-                    self.var(*var, number, var_count);
+                    self.var(*var, number);
                 }
                 BlockToken::PrintAssignment(var, expr) => {
                     let number = self.expr(expr)?;
                     write_stdout!(self, "{number:?}");
-                    self.var(*var, number, var_count);
+                    self.var(*var, number);
                 }
                 BlockToken::Return(expr) => {
                     return ReturnType::Return(if expr.tokens.is_empty() {
@@ -152,11 +150,10 @@ impl<S: Write> ComputeInner<S> {
         }
         ReturnType::None
     }
-    fn var(&mut self, var: Variable, number: Number, var_count: &mut usize) {
+    fn var(&mut self, var: Variable, number: Number) {
         match var {
             Variable::Variable(v) => {
                 if self.stack.len() == v.strict_cast::<usize>() {
-                    *var_count += 1;
                     self.stack.push(number);
                 } else {
                     self.stack[v.strict_cast::<usize>()] = number;
