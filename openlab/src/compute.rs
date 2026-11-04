@@ -1,4 +1,5 @@
 use core::iter;
+use core::mem;
 use core::ops::{Add, Div, Mul, Sub};
 use core::ops::{ControlFlow, FromResidual, Residual, Try};
 use parser::functions::Function;
@@ -10,26 +11,25 @@ use parser::options::ParserOptions;
 use parser::parser::{
     Block, BlockToken, Expression, ExpressionToken, Number, ParseError, Variable,
 };
+use std::io::{Empty, Stdout, Write, empty, stdout};
 #[derive(Debug, Default)]
-struct ComputeInner {
+struct ComputeInner<S: Write> {
     stack: Vec<Number>,
+    stdout: S,
 }
 #[derive(Debug)]
-pub struct Compute<'a> {
+pub struct Compute<'a, S: Write> {
     block: Block<'a>,
-    inner: ComputeInner,
+    inner: ComputeInner<S>,
 }
-impl<'a> Compute<'a> {
-    pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
-        Ok(Self {
-            block: Block::parse(options, s)?,
-            inner: ComputeInner::default(),
-        })
+impl<'a, S: Write> Compute<'a, S> {
+    pub fn parse(options: ParserOptions<'_>, s: &'a str, stdout: S) -> Result<Self, ParseError> {
+        Ok(Self::from_block(Block::parse(options, s)?, stdout))
     }
-    pub fn from_block(block: Block<'a>) -> Self {
+    pub fn from_block(block: Block<'a>, stdout: S) -> Self {
         Self {
             block,
-            inner: ComputeInner::default(),
+            inner: ComputeInner::new(stdout),
         }
     }
     pub fn compute(&mut self) -> Option<Number> {
@@ -39,7 +39,58 @@ impl<'a> Compute<'a> {
         ret.option()
     }
 }
-impl ComputeInner {
+impl<'a> Compute<'a, Vec<u8>> {
+    pub fn parse_str(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
+        Ok(Self::from_block_str(Block::parse(options, s)?))
+    }
+    pub fn from_block_str(block: Block<'a>) -> Self {
+        Self {
+            block,
+            inner: ComputeInner::new(Vec::new()),
+        }
+    }
+    pub fn compute_str(&mut self) -> (Option<Number>, String) {
+        let ret = self.compute();
+        (
+            ret,
+            String::from_utf8(mem::take(&mut self.inner.stdout)).unwrap(),
+        )
+    }
+}
+impl<'a> Compute<'a, Stdout> {
+    pub fn parse_stdout(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
+        Ok(Self::from_block_stdout(Block::parse(options, s)?))
+    }
+    pub fn from_block_stdout(block: Block<'a>) -> Self {
+        Self {
+            block,
+            inner: ComputeInner::new(stdout()),
+        }
+    }
+}
+impl<'a> Compute<'a, Empty> {
+    pub fn parse_empty(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
+        Ok(Self::from_block_empty(Block::parse(options, s)?))
+    }
+    pub fn from_block_empty(block: Block<'a>) -> Self {
+        Self {
+            block,
+            inner: ComputeInner::new(empty()),
+        }
+    }
+}
+macro_rules! write_stdout {
+    ($ident:ident, $($tt:tt)*) => {
+        $ident.stdout.write_fmt(format_args!($($tt)*)).unwrap();
+    };
+}
+impl<S: Write> ComputeInner<S> {
+    pub fn new(stdout: S) -> Self {
+        Self {
+            stack: Vec::new(),
+            stdout,
+        }
+    }
     pub fn block(&mut self, block: &Block<'_>) -> ReturnType<Number> {
         let len = self.stack.len();
         let mut var_count = 0;
@@ -59,7 +110,7 @@ impl ComputeInner {
                     if i == block.blocks.len() - 1 {
                         return ReturnType::Last(res);
                     }
-                    println!("{res:?}");
+                    write_stdout!(self, "{res:?}");
                 }
                 BlockToken::Block(b) => {
                     let res = self.block(b);
@@ -76,7 +127,7 @@ impl ComputeInner {
                 }
                 BlockToken::PrintAssignment(var, expr) => {
                     let number = self.expr(expr)?;
-                    println!("{number:?}");
+                    write_stdout!(self, "{number:?}");
                     self.var(*var, number, var_count);
                 }
                 BlockToken::Return(expr) => {
@@ -92,7 +143,7 @@ impl ComputeInner {
                     } else {
                         let ret = self.expr(expr).option();
                         if let Some(res) = &ret {
-                            println!("{res:?}");
+                            write_stdout!(self, "{res:?}");
                         }
                         ret
                     });
@@ -191,7 +242,7 @@ impl ComputeInner {
                 let a = next();
                 let b = next();
                 if a != b {
-                    println!("{a:?} does not equal {b:?}");
+                    write_stdout!(self, "{a:?} does not equal {b:?}");
                 }
                 None
             }

@@ -17,6 +17,7 @@ fn block_token<const N: usize>(blocks: [BlockToken<'_>; N]) -> BlockToken<'_> {
 fn pexpr<'a>(options: ParserOptions<'a>, s: &'a str) -> BlockToken<'a> {
     BlockToken::parse_expression_str(options, s).unwrap()
 }
+#[expect(unused)]
 fn expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
     BlockToken::Expression(Expression {
         tokens: Box::new(blocks),
@@ -68,10 +69,18 @@ fn expr_op(o: Operator) -> ExpressionToken<'static> {
 fn mat<const N: usize, const M: usize>(mat: [[f64; N]; M]) -> Number {
     Number::Matrix(Matrix::from(mat))
 }
-fn assert_block(options: ParserOptions<'_>, s: &str, block: Block<'_>, res: Option<Number>) {
+fn assert_block(
+    options: ParserOptions<'_>,
+    s: &str,
+    block: Block<'_>,
+    stdout: &str,
+    res: Option<Number>,
+) {
     assert_eq!(Block::parse(options, s).unwrap(), block);
-    let mut compute = Compute::from_block(block);
-    assert_eq!(compute.compute(), res);
+    let mut compute = Compute::from_block_str(block);
+    let (ret, str) = compute.compute_str();
+    assert_eq!(ret, res);
+    assert_eq!(str, stdout);
 }
 #[test]
 fn parse_add() {
@@ -85,6 +94,7 @@ fn parse_add() {
             expr_number(3.0),
             expr_op(Operator::Add),
         ])]),
+        "",
         Some(number(6.0)),
     )
 }
@@ -100,6 +110,7 @@ fn parse_exp() {
             expr_op(Operator::Pow),
             expr_op(Operator::Pow),
         ])]),
+        "",
         Some(number(1.0)),
     )
 }
@@ -126,6 +137,7 @@ fn parse_units() {
             ),
             expr_op(Operator::Div),
         ])]),
+        "",
         Some(
             (number(2.0 / 1000.0) / units(options, Prefix::None, Unit::TimeUnit(TimeUnit::Second)))
                 .unwrap(),
@@ -144,6 +156,7 @@ fn parse_vector() {
             expr_number(4.0),
             expr_fun(Function::Vector(3)),
         ])]),
+        "",
         Some(mat([[2.0, 3.0, 4.0]])),
     )
 }
@@ -157,13 +170,12 @@ fn parse_mat() {
             expr_number(2.0),
             expr_number(3.0),
             expr_number(4.0),
-            expr_fun(Function::Vector(3)),
             expr_number(2.0),
             expr_number(1.0),
             expr_number(3.0),
-            expr_fun(Function::Vector(3)),
-            expr_fun(Function::Vector(2)),
+            expr_fun(Function::Matrix(3, 2)),
         ])]),
+        "",
         Some(mat([[2.0, 3.0, 4.0], [2.0, 1.0, 3.0]])),
     )
 }
@@ -172,8 +184,8 @@ fn var_test() {
     let options = ParserOptions::new(None);
     assert_block(
         options,
-        "   let a = 2;\
-            let b = 3;\
+        "   let a = 2;
+            let b = 3;
             {
                 let a = 2a;
                 let b = 2a*b;
@@ -207,6 +219,7 @@ fn var_test() {
             print_expr([var(0), expr_number(2.0), expr_fun(Function::AssertEq)]),
             print_expr([var(1), expr_number(3.0), expr_fun(Function::AssertEq)]),
         ]),
+        "",
         None,
     )
 }

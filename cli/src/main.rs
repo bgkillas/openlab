@@ -10,7 +10,7 @@ fn main() {
     let config_dir_path = config_dir.as_deref();
     println!("{:#?}", LexerIter::new(&expr).collect::<Vec<_>>());
     let options = ParserOptions::new(config_dir_path);
-    let block = Compute::parse(options, &expr);
+    let block = Compute::parse_stdout(options, &expr);
     println!("{block:#?}");
     if let Ok(mut inner) = block {
         let tmr = std::time::Instant::now();

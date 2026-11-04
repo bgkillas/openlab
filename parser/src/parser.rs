@@ -82,6 +82,7 @@ impl<'a> Block<'a> {
                 LexerToken::Word("let") => state.parse_let(options, tokens)?,
                 LexerToken::Word("mut") => todo!(),
                 LexerToken::Word("return") => todo!(),
+                LexerToken::LeftCurlyBracket => todo!(),
                 _ => state.parse_expression(options, tokens)?,
             };
             blocks.push(part);

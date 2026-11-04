@@ -24,7 +24,6 @@ macro_rules! define_float {
         impl BaseImpl for $ty {}
         impl NumberImpl for $ty {
             type NumberReal = $ty;
-            #[expect(clippy::allow_attributes)]
             #[allow(clippy::cast_precision_loss)]
             #[expect(clippy::as_conversions)]
             fn parse_number(base: u8, whole: u128, part: u128) -> Self {

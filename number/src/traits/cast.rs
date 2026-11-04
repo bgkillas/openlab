@@ -8,7 +8,6 @@ macro_rules! impl_float_to_float {
         $(
             impl Cast<$Flt> for $Float {
                 #[inline]
-                #[expect(clippy::allow_attributes)]
                 #[allow(clippy::cast_possible_truncation)]
                 fn cast(self) -> $Flt {
                     self as $Flt
