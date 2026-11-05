@@ -108,7 +108,7 @@ impl<S: Write> ComputeInner<S> {
                     if i == block.blocks.len() - 1 {
                         return ReturnType::Last(res);
                     }
-                    write_stdout!(self, "{res:?}");
+                    write_stdout!(self, "{res:?}\n");
                 }
                 BlockToken::Block(b) => {
                     let res = self.block(b);
@@ -125,7 +125,7 @@ impl<S: Write> ComputeInner<S> {
                 }
                 BlockToken::PrintAssignment(var, expr) => {
                     let number = self.expr(expr)?;
-                    write_stdout!(self, "{number:?}");
+                    write_stdout!(self, "{number:?}\n");
                     self.var(*var, number);
                 }
                 BlockToken::Return(expr) => {
@@ -141,7 +141,7 @@ impl<S: Write> ComputeInner<S> {
                     } else {
                         let ret = self.expr(expr).option();
                         if let Some(res) = &ret {
-                            write_stdout!(self, "{res:?}");
+                            write_stdout!(self, "{res:?}\n");
                         }
                         ret
                     });
@@ -239,7 +239,7 @@ impl<S: Write> ComputeInner<S> {
                 let a = next();
                 let b = next();
                 if a != b {
-                    write_stdout!(self, "{a:?} does not equal {b:?}");
+                    write_stdout!(self, "{a:?} does not equal {b:?}\n");
                 }
                 None
             }

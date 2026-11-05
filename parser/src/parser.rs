@@ -2,6 +2,7 @@ use crate::functions::Function;
 use crate::operators::{Bracket, Operator, OperatorToken};
 use crate::options::ParserOptions;
 use crate::units::{Dimension, UNIT_COUNT, UnitType};
+use core::range::Range;
 use core::str::FromStr as _;
 use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
@@ -47,6 +48,11 @@ pub enum BlockToken<'a> {
     PrintAssignment(Variable, Expression<'a>),
     PrintReturn(Expression<'a>),
 }
+pub struct FormatStr<'a> {
+    pub str: &'a str,
+    pub elems: Box<[(Range<usize>, FormatOptions)]>,
+}
+pub struct FormatOptions;
 #[derive(Clone, Debug)]
 pub enum ParseError {
     MissingInput,
@@ -54,6 +60,7 @@ pub enum ParseError {
     LexerError,
     UnexpectedToken,
     NoBracketAfterFunction,
+    BadFormat,
 }
 impl<'a> Block<'a> {
     pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
@@ -406,5 +413,51 @@ impl<'a> BlockToken<'a> {
         let mut tokens = peek_nth(LexerIter::new(s));
         let mut state = State::default();
         state.parse_expression(options, &mut tokens)
+    }
+}
+impl<'a> FormatStr<'a> {
+    pub fn get_string<I>(&self, iter: &mut I) -> String
+    where
+        I: Iterator<Item = Number>,
+    {
+        let mut string = String::new();
+        let mut start = 0;
+        for (n, &(range, _)) in iter.zip(&self.elems) {
+            string.push_str(&self.str[start..range.start]);
+            string.push_str(format!("{n:?}").as_str());
+            start = range.end;
+        }
+        string.push_str(&self.str[start..]);
+        string
+    }
+    pub fn new(str: &'a str) -> Result<Self, ParseError> {
+        let mut elems = Vec::new();
+        let mut is_left = None;
+        for (i, c) in str.char_indices() {
+            match c {
+                '{' => is_left = Some(i),
+                '}' => {
+                    if let Some(left) = is_left {
+                        elems.push((
+                            Range::from(left..(i + 1)),
+                            FormatOptions::new(&str[left + 1..i]),
+                        ));
+                    } else {
+                        return Err(ParseError::BadFormat);
+                    }
+                    is_left = None;
+                }
+                _ => {}
+            }
+        }
+        Ok(Self {
+            str,
+            elems: elems.into_boxed_slice(),
+        })
+    }
+}
+impl FormatOptions {
+    pub fn new(_: &str) -> Self {
+        Self
     }
 }
