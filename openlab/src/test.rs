@@ -38,6 +38,14 @@ fn let_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> Block
         },
     )
 }
+fn mut_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
+    BlockToken::Assignment(
+        Variable::Variable(var),
+        Expression {
+            tokens: Box::new(blocks),
+        },
+    )
+}
 #[expect(unused)]
 fn let_print_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
     BlockToken::PrintAssignment(
@@ -217,6 +225,50 @@ fn var_test() {
             expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
             expr([var(0), expr_number(2.0), expr_fun(Function::AssertEq)]),
             expr([var(1), expr_number(3.0), expr_fun(Function::AssertEq)]),
+        ]),
+        "",
+        None,
+    )
+}
+#[test]
+fn var_test_mut() {
+    let options = ParserOptions::new(None);
+    assert_block(
+        options,
+        "   let a = 2;
+            let b = 3;
+            {
+                mut a = 2a;
+                mut b = 2a*b;
+                assert_eq(a,4);
+                assert_eq(b,24);
+            }
+            let c = 4;
+            assert_eq(c,4);
+            assert_eq(a,4);
+            assert_eq(b,24);",
+        block([
+            let_expr(0, [expr_number(2.0)]),
+            let_expr(1, [expr_number(3.0)]),
+            block_token([
+                mut_expr(0, [expr_number(2.0), var(0), expr_op(Operator::MulInner)]),
+                mut_expr(
+                    1,
+                    [
+                        expr_number(2.0),
+                        var(0),
+                        expr_op(Operator::MulInner),
+                        var(1),
+                        expr_op(Operator::Mul),
+                    ],
+                ),
+                expr([var(0), expr_number(4.0), expr_fun(Function::AssertEq)]),
+                expr([var(1), expr_number(24.0), expr_fun(Function::AssertEq)]),
+            ]),
+            let_expr(2, [expr_number(4.0)]),
+            expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
+            expr([var(0), expr_number(4.0), expr_fun(Function::AssertEq)]),
+            expr([var(1), expr_number(24.0), expr_fun(Function::AssertEq)]),
         ]),
         "",
         None,

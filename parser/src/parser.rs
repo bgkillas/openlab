@@ -61,6 +61,7 @@ pub enum ParseError {
     UnexpectedToken,
     NoBracketAfterFunction,
     BadFormat,
+    NoVarNamed,
 }
 impl<'a> Block<'a> {
     pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
@@ -94,6 +95,18 @@ impl Default for State<'_> {
         }
     }
 }
+fn get_let_mut_vars<'a>(
+    _: ParserOptions<'_>,
+    tokens: &mut PeekNth<LexerIter<'a>>,
+) -> Result<&'a str, ParseError> {
+    let token = tokens
+        .next()
+        .map_or(Err(ParseError::MissingInput), |t| Ok(t.token))?;
+    match token {
+        LexerToken::Word(word) => Ok(word),
+        _ => Err(ParseError::UnexpectedToken),
+    }
+}
 impl<'a> State<'a> {
     fn parse_block(
         &mut self,
@@ -115,7 +128,7 @@ impl<'a> State<'a> {
                 LexerToken::Word("continue") => todo!(),
                 LexerToken::Word("fn") => todo!(),
                 LexerToken::Word("let") => self.parse_let(options, tokens)?,
-                LexerToken::Word("mut") => todo!(),
+                LexerToken::Word("mut") => self.parse_mut(options, tokens)?,
                 LexerToken::Word("return") => todo!(),
                 LexerToken::LeftCurlyBracket => {
                     tokens.next();
@@ -149,20 +162,44 @@ impl<'a> State<'a> {
                 range: _
             })
         );
-        let token = tokens
-            .next()
-            .map_or(Err(ParseError::MissingInput), |t| Ok(t.token))?;
+        let var_name = get_let_mut_vars(options, tokens)?;
         let var = Variable::Variable(self.variables.len().strict_cast());
         if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
             return Err(ParseError::UnexpectedToken);
         }
         let expr = self.parse_expression(options, tokens)?;
-        match token {
-            LexerToken::Word(word) => {
-                self.variables.push(word);
-            }
-            _ => return Err(ParseError::UnexpectedToken),
+        self.variables.push(var_name);
+        Ok(match expr {
+            BlockToken::Expression(exp) => BlockToken::Assignment(var, exp),
+            BlockToken::PrintExpression(exp) => BlockToken::PrintAssignment(var, exp),
+            _ => unreachable!(),
+        })
+    }
+    fn parse_mut(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<BlockToken<'a>, ParseError> {
+        let tkn = tokens.next();
+        debug_assert_matches!(
+            tkn,
+            Some(LexerItem {
+                token: LexerToken::Word("mut"),
+                range: _
+            })
+        );
+        let var_name = get_let_mut_vars(options, tokens)?;
+        let pos = self
+            .variables
+            .iter()
+            .rposition(|s| *s == var_name)
+            .ok_or(ParseError::NoVarNamed)?
+            .strict_cast();
+        let var = Variable::Variable(pos);
+        if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
+            return Err(ParseError::UnexpectedToken);
         }
+        let expr = self.parse_expression(options, tokens)?;
         Ok(match expr {
             BlockToken::Expression(exp) => BlockToken::Assignment(var, exp),
             BlockToken::PrintExpression(exp) => BlockToken::PrintAssignment(var, exp),
