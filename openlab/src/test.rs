@@ -90,6 +90,20 @@ fn assert_block(
     assert_eq!(stdout, str);
 }
 #[test]
+fn test_assert() {
+    assert_block(
+        ParserOptions::new(None),
+        "assert_eq(0, 1)",
+        block([print_expr([
+            expr_number(0.0),
+            expr_number(1.0),
+            expr_fun(Function::AssertEq),
+        ])]),
+        "Complex(0.0) does not equal Complex(1.0)\n",
+        None,
+    )
+}
+#[test]
 fn parse_add() {
     assert_block(
         ParserOptions::new(None),

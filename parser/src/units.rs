@@ -420,9 +420,11 @@ pub trait UnitBucket: Copy + PartialEq + Debug {
         let mut float = self.get(options)?;
         let units = self.units();
         for (i, &u) in units.units.as_array().iter().enumerate() {
-            float /= options
-                .get(Dimension::from(u8::try_from(i).unwrap()))?
-                .powf(Float::from(u));
+            if u != 0.0 {
+                float /= options
+                    .get(Dimension::from(u8::try_from(i).unwrap()))?
+                    .powf(Float::from(u));
+            }
         }
         Some(float)
     }
