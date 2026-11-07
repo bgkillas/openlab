@@ -3,8 +3,10 @@ use core::mem;
 use core::ops::{Add, Div, Mul, Sub};
 use core::ops::{ControlFlow, FromResidual, Residual, Try};
 use parser::functions::Function;
+use parser::number::float::real::Real;
 use parser::number::matrix::dense::Matrix;
 use parser::number::matrix::size::MatrixDimension;
+use parser::number::traits::number::NumberImpl as _;
 use parser::number::traits::pow::{Pow, Root};
 use parser::operators::Operator;
 use parser::options::ParserOptions;
@@ -145,6 +147,32 @@ impl<S: Write> ComputeInner<S> {
                         }
                         ret
                     });
+                }
+                BlockToken::If(expr, then, ifelse) => {
+                    let number = self.expr(expr)?;
+                    if let Some(complex) = number.complex()
+                        && complex.units.is_zero()
+                        && complex.number.im.is_zero()
+                        && matches!(complex.number.re, Real(0.0 | 1.0))
+                    {
+                        if let Some(res) = if complex.number.re == Real(1.0) {
+                            Some(self.block(then))
+                        } else {
+                            ifelse.as_ref().map(|inner| self.block(inner))
+                        } {
+                            //TODO ifelse.some() may not be saturated
+                            if i == block.blocks.len() - 1 && ifelse.is_some() {
+                                return ReturnType::Last(res?);
+                            } else if !matches!(res, ReturnType::None) {
+                                res?;
+                            }
+                        }
+                    } else {
+                        write_stdout!(
+                            self,
+                            "if statement expects a unitless real number, of value 0 or 1\n"
+                        );
+                    }
                 }
             }
         }

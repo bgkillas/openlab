@@ -47,6 +47,7 @@ pub enum BlockToken<'a> {
     PrintExpression(Expression<'a>),
     PrintAssignment(Variable, Expression<'a>),
     PrintReturn(Expression<'a>),
+    If(Expression<'a>, Block<'a>, Option<Block<'a>>),
 }
 pub struct FormatStr<'a> {
     pub str: &'a str,
@@ -62,6 +63,7 @@ pub enum ParseError {
     NoBracketAfterFunction,
     BadFormat,
     NoVarNamed,
+    IfExpectedExpression,
 }
 impl<'a> Block<'a> {
     pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
@@ -117,7 +119,7 @@ impl<'a> State<'a> {
         while let Some(token) = tokens.peek() {
             let part = match token.token {
                 LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
-                LexerToken::Word("if") => todo!(),
+                LexerToken::Word("if") => self.parse_if(options, tokens)?,
                 LexerToken::Word("else") => todo!(),
                 LexerToken::SingleQuote => todo!(),
                 LexerToken::Word("for") => todo!(),
@@ -131,11 +133,7 @@ impl<'a> State<'a> {
                 LexerToken::Word("mut") => self.parse_mut(options, tokens)?,
                 LexerToken::Word("return") => todo!(),
                 LexerToken::LeftCurlyBracket => {
-                    tokens.next();
-                    let len = self.variables.len();
-                    let block = self.parse_block(options, tokens)?;
-                    self.variables.drain(len..);
-                    BlockToken::Block(block)
+                    BlockToken::Block(self.parse_block_inner(options, tokens)?)
                 }
                 LexerToken::RightCurlyBracket => {
                     tokens.next();
@@ -148,6 +146,62 @@ impl<'a> State<'a> {
         Ok(Block {
             blocks: blocks.into_boxed_slice(),
         })
+    }
+    fn parse_block_inner(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<Block<'a>, ParseError> {
+        let tkn = tokens.next();
+        debug_assert_matches!(
+            tkn,
+            Some(LexerItem {
+                token: LexerToken::LeftCurlyBracket,
+                range: _
+            })
+        );
+        let len = self.variables.len();
+        let block = self.parse_block(options, tokens)?;
+        self.variables.drain(len..);
+        Ok(block)
+    }
+    fn parse_if(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<BlockToken<'a>, ParseError> {
+        let tkn = tokens.next();
+        debug_assert_matches!(
+            tkn,
+            Some(LexerItem {
+                token: LexerToken::Word("if"),
+                range: _
+            })
+        );
+        let BlockToken::Expression(expr) = self.parse_expression(options, tokens)? else {
+            return Err(ParseError::IfExpectedExpression);
+        };
+        let block = self.parse_block_inner(options, tokens)?;
+        let ifelse = if tokens
+            .peek()
+            .is_some_and(|t| t.token == LexerToken::Word("else"))
+        {
+            tokens.next();
+            if tokens
+                .peek()
+                .is_some_and(|t| t.token == LexerToken::Word("if"))
+            {
+                let ifelse = self.parse_if(options, tokens)?;
+                Some(Block {
+                    blocks: Box::from([ifelse]),
+                })
+            } else {
+                Some(self.parse_block_inner(options, tokens)?)
+            }
+        } else {
+            None
+        };
+        Ok(BlockToken::If(expr, block, ifelse))
     }
     fn parse_let(
         &mut self,

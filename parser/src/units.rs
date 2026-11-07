@@ -792,11 +792,9 @@ impl UnitBucket for CurrencyUnit {
                 }
             }
         }
+        let unit = arr[self.discriminant()];
         *CURRENCY.lock().unwrap() = Some(arr);
-        if let Some(currency) = CURRENCY.lock().unwrap().as_ref() {
-            return Some(currency[self.discriminant()]);
-        }
-        None
+        Some(unit)
     }
     #[rustfmt::skip]
     fn to_short(self) -> &'static str {

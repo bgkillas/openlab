@@ -22,6 +22,16 @@ fn expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
         tokens: Box::new(blocks),
     })
 }
+fn ifelse<'a, const N: usize>(
+    p: Expression<'a>,
+    ifthen: Block<'a>,
+    ifelse: Option<Block<'a>>,
+) -> BlockToken<'a> {
+    BlockToken::If(p, ifthen, ifelse)
+}
+fn ifthen<'a, const N: usize>(p: Expression<'a>, ifthen: Block<'a>) -> BlockToken<'a> {
+    BlockToken::If(p, ifthen, None)
+}
 fn print_expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
     BlockToken::PrintExpression(Expression {
         tokens: Box::new(blocks),
@@ -286,5 +296,16 @@ fn var_test_mut() {
         ]),
         "",
         None,
+    )
+}
+#[test]
+fn test_if() {
+    let options = ParserOptions::new(None);
+    assert_block(
+        options,
+        "if 0 {1} else if 0 {2} else if 0 {3} else {4}",
+        block([ifelse(expr)]),
+        "",
+        Some(number(4.0)),
     )
 }
