@@ -23,14 +23,27 @@ fn expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
     })
 }
 fn ifelse<'a, const N: usize>(
-    p: Expression<'a>,
+    p: [ExpressionToken<'a>; N],
     ifthen: Block<'a>,
-    ifelse: Option<Block<'a>>,
+    ifelse: Block<'a>,
 ) -> BlockToken<'a> {
-    BlockToken::If(p, ifthen, ifelse)
+    BlockToken::If(
+        Expression {
+            tokens: Box::new(p),
+        },
+        ifthen,
+        Some(ifelse),
+    )
 }
-fn ifthen<'a, const N: usize>(p: Expression<'a>, ifthen: Block<'a>) -> BlockToken<'a> {
-    BlockToken::If(p, ifthen, None)
+#[expect(unused)]
+fn ifthen<'a, const N: usize>(p: [ExpressionToken<'a>; N], ifthen: Block<'a>) -> BlockToken<'a> {
+    BlockToken::If(
+        Expression {
+            tokens: Box::new(p),
+        },
+        ifthen,
+        None,
+    )
 }
 fn print_expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
     BlockToken::PrintExpression(Expression {
@@ -303,9 +316,21 @@ fn test_if() {
     let options = ParserOptions::new(None);
     assert_block(
         options,
-        "if 0 {1} else if 0 {2} else if 0 {3} else {4}",
-        block([ifelse(expr)]),
+        "if 0 {1} else if 0 {2} else if 1 {3} else {4}",
+        block([ifelse(
+            [expr_number(0.0)],
+            block([print_expr([expr_number(1.0)])]),
+            block([ifelse(
+                [expr_number(0.0)],
+                block([print_expr([expr_number(2.0)])]),
+                block([ifelse(
+                    [expr_number(1.0)],
+                    block([print_expr([expr_number(3.0)])]),
+                    block([print_expr([expr_number(4.0)])]),
+                )]),
+            )]),
+        )]),
         "",
-        Some(number(4.0)),
+        Some(number(3.0)),
     )
 }

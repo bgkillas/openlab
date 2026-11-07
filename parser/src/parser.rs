@@ -78,6 +78,7 @@ impl<'a> Block<'a> {
         state.parse_block(options, tokens)
     }
 }
+#[derive(Debug)]
 pub(crate) struct State<'a> {
     pub expression: Vec<ExpressionToken<'a>>,
     pub operator_stack: Vec<OperatorToken>,
@@ -178,7 +179,7 @@ impl<'a> State<'a> {
                 range: _
             })
         );
-        let BlockToken::Expression(expr) = self.parse_expression(options, tokens)? else {
+        let BlockToken::PrintExpression(expr) = self.parse_expression(options, tokens)? else {
             return Err(ParseError::IfExpectedExpression);
         };
         let block = self.parse_block_inner(options, tokens)?;
@@ -430,7 +431,20 @@ impl<'a> State<'a> {
     ) -> Result<BlockToken<'a>, ParseError> {
         self.reset();
         let mut print = true;
-        while let Some(token) = tokens.next() {
+        loop {
+            if self.input_left
+                && tokens.peek().is_some_and(|tkn| {
+                    matches!(
+                        tkn.token,
+                        LexerToken::LeftCurlyBracket | LexerToken::RightCurlyBracket
+                    )
+                })
+            {
+                break;
+            }
+            let Some(token) = tokens.next() else {
+                break;
+            };
             match token.token {
                 LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
                 LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
