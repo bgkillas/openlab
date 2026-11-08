@@ -5,28 +5,24 @@ use parser::operators::Operator;
 use parser::options::ParserOptions;
 use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, Variable};
 use parser::units::{Dimension, DistanceUnit, MetricPrefix, Prefix, TimeUnit, Unit};
-fn block<const N: usize>(blocks: [BlockToken<'_>; N]) -> Block<'_> {
+fn block<const N: usize>(blocks: [BlockToken; N]) -> Block {
     Block {
         blocks: Box::new(blocks),
     }
 }
-fn block_token<const N: usize>(blocks: [BlockToken<'_>; N]) -> BlockToken<'_> {
+fn block_token<const N: usize>(blocks: [BlockToken; N]) -> BlockToken {
     BlockToken::Block(block(blocks))
 }
 #[expect(unused)]
-fn pexpr<'a>(options: ParserOptions<'a>, s: &'a str) -> BlockToken<'a> {
+fn pexpr<'a>(options: ParserOptions<'a>, s: &'a str) -> BlockToken {
     BlockToken::parse_expression_str(options, s).unwrap()
 }
-fn expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
+fn expr<const N: usize>(blocks: [ExpressionToken; N]) -> BlockToken {
     BlockToken::Expression(Expression {
         tokens: Box::new(blocks),
     })
 }
-fn ifelse<'a, const N: usize>(
-    p: [ExpressionToken<'a>; N],
-    ifthen: Block<'a>,
-    ifelse: Block<'a>,
-) -> BlockToken<'a> {
+fn ifelse<'a, const N: usize>(p: [ExpressionToken; N], ifthen: Block, ifelse: Block) -> BlockToken {
     BlockToken::If(
         Expression {
             tokens: Box::new(p),
@@ -35,8 +31,11 @@ fn ifelse<'a, const N: usize>(
         Some(ifelse),
     )
 }
+fn fun(fn_name: u32, vars: u32, block: Block) -> BlockToken {
+    BlockToken::Function(fn_name, vars, block)
+}
 #[expect(unused)]
-fn ifthen<'a, const N: usize>(p: [ExpressionToken<'a>; N], ifthen: Block<'a>) -> BlockToken<'a> {
+fn ifthen<'a, const N: usize>(p: [ExpressionToken; N], ifthen: Block) -> BlockToken {
     BlockToken::If(
         Expression {
             tokens: Box::new(p),
@@ -45,15 +44,15 @@ fn ifthen<'a, const N: usize>(p: [ExpressionToken<'a>; N], ifthen: Block<'a>) ->
         None,
     )
 }
-fn print_expr<const N: usize>(blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
+fn print_expr<const N: usize>(blocks: [ExpressionToken; N]) -> BlockToken {
     BlockToken::PrintExpression(Expression {
         tokens: Box::new(blocks),
     })
 }
-fn var(var: u32) -> ExpressionToken<'static> {
+fn var(var: u32) -> ExpressionToken {
     ExpressionToken::Variable(Variable::Variable(var))
 }
-fn let_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
+fn let_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> BlockToken {
     BlockToken::Assignment(
         Variable::Variable(var),
         Expression {
@@ -61,7 +60,7 @@ fn let_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> Block
         },
     )
 }
-fn mut_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
+fn mut_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> BlockToken {
     BlockToken::Assignment(
         Variable::Variable(var),
         Expression {
@@ -70,7 +69,7 @@ fn mut_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> Block
     )
 }
 #[expect(unused)]
-fn let_print_expr<const N: usize>(var: u32, blocks: [ExpressionToken<'_>; N]) -> BlockToken<'_> {
+fn let_print_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> BlockToken {
     BlockToken::PrintAssignment(
         Variable::Variable(var),
         Expression {
@@ -84,16 +83,16 @@ fn number(f: f64) -> Number {
 fn units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Number {
     Number::Complex(Dimension::number_inner(options, prefix, unit).unwrap())
 }
-fn expr_number(f: f64) -> ExpressionToken<'static> {
+fn expr_number(f: f64) -> ExpressionToken {
     ExpressionToken::Number(number(f))
 }
-fn expr_units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> ExpressionToken<'static> {
+fn expr_units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> ExpressionToken {
     ExpressionToken::Number(units(options, prefix, unit))
 }
-fn expr_fun(f: Function) -> ExpressionToken<'static> {
+fn expr_fun(f: Function) -> ExpressionToken {
     ExpressionToken::Function(f)
 }
-fn expr_op(o: Operator) -> ExpressionToken<'static> {
+fn expr_op(o: Operator) -> ExpressionToken {
     expr_fun(Function::Operator(o))
 }
 fn mat<const N: usize, const M: usize>(mat: [[f64; N]; M]) -> Number {
@@ -102,7 +101,7 @@ fn mat<const N: usize, const M: usize>(mat: [[f64; N]; M]) -> Number {
 fn assert_block(
     options: ParserOptions<'_>,
     s: &str,
-    block: Block<'_>,
+    block: Block,
     stdout: &str,
     res: Option<Number>,
 ) {
@@ -329,6 +328,27 @@ fn test_if() {
                     block([print_expr([expr_number(4.0)])]),
                 )]),
             )]),
+        )]),
+        "",
+        Some(number(3.0)),
+    )
+}
+#[test]
+fn test_fn() {
+    let options = ParserOptions::new(None);
+    assert_block(
+        options,
+        "fn foo(a,b,c){a+b+c}",
+        block([fun(
+            0,
+            3,
+            block([print_expr([
+                var(0),
+                var(1),
+                expr_op(Operator::Add),
+                var(2),
+                expr_op(Operator::Add),
+            ])]),
         )]),
         "",
         Some(number(3.0)),

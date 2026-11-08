@@ -16,8 +16,8 @@ pub type NumberBase = Complex<Float>;
 pub type NumberInner = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
 pub type Number = number::number::Number<NumberInner>;
 #[derive(PartialEq, Clone, Default, Debug)]
-pub struct Expression<'a> {
-    pub tokens: Box<[ExpressionToken<'a>]>,
+pub struct Expression {
+    pub tokens: Box<[ExpressionToken]>,
 }
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum Variable {
@@ -27,27 +27,27 @@ pub enum Variable {
     None,
 }
 #[derive(PartialEq, Clone, Debug)]
-pub enum ExpressionToken<'a> {
-    Block(Block<'a>),
+pub enum ExpressionToken {
+    Block(Block),
     Number(Number),
     Variable(Variable),
     Function(Function),
 }
 #[derive(PartialEq, Clone, Default, Debug)]
-pub struct Block<'a> {
-    pub blocks: Box<[BlockToken<'a>]>,
+pub struct Block {
+    pub blocks: Box<[BlockToken]>,
 }
 #[derive(PartialEq, Clone, Debug)]
-pub enum BlockToken<'a> {
-    Block(Block<'a>),
-    Function(&'a str, Block<'a>),
-    Expression(Expression<'a>),
-    Assignment(Variable, Expression<'a>),
-    Return(Expression<'a>),
-    PrintExpression(Expression<'a>),
-    PrintAssignment(Variable, Expression<'a>),
-    PrintReturn(Expression<'a>),
-    If(Expression<'a>, Block<'a>, Option<Block<'a>>),
+pub enum BlockToken {
+    Block(Block),
+    Function(u32, u32, Block),
+    Expression(Expression),
+    Assignment(Variable, Expression),
+    Return(Expression),
+    PrintExpression(Expression),
+    PrintAssignment(Variable, Expression),
+    PrintReturn(Expression),
+    If(Expression, Block, Option<Block>),
 }
 pub struct FormatStr<'a> {
     pub str: &'a str,
@@ -64,15 +64,16 @@ pub enum ParseError {
     BadFormat,
     NoVarNamed,
     IfExpectedExpression,
+    ExpectedFnName,
 }
-impl<'a> Block<'a> {
-    pub fn parse(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
+impl Block {
+    pub fn parse(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
         let mut tokens = peek_nth(LexerIter::new(s));
         Self::parse_tokens(options, &mut tokens)
     }
     pub fn parse_tokens(
         options: ParserOptions<'_>,
-        tokens: &mut PeekNth<LexerIter<'a>>,
+        tokens: &mut PeekNth<LexerIter<'_>>,
     ) -> Result<Self, ParseError> {
         let mut state = State::default();
         state.parse_block(options, tokens)
@@ -80,11 +81,12 @@ impl<'a> Block<'a> {
 }
 #[derive(Debug)]
 pub(crate) struct State<'a> {
-    pub expression: Vec<ExpressionToken<'a>>,
+    pub expression: Vec<ExpressionToken>,
     pub operator_stack: Vec<OperatorToken>,
     pub fn_inputs: Vec<u32>,
     pub input_left: bool,
     pub variables: Vec<&'a str>,
+    pub funs: Vec<&'a str>,
 }
 #[expect(clippy::derivable_impls)]
 impl Default for State<'_> {
@@ -95,6 +97,7 @@ impl Default for State<'_> {
             fn_inputs: Vec::new(),
             input_left: false,
             variables: Vec::new(),
+            funs: Vec::new(),
         }
     }
 }
@@ -115,7 +118,7 @@ impl<'a> State<'a> {
         &mut self,
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
-    ) -> Result<Block<'a>, ParseError> {
+    ) -> Result<Block, ParseError> {
         let mut blocks = Vec::new();
         while let Some(token) = tokens.peek() {
             let part = match token.token {
@@ -129,7 +132,7 @@ impl<'a> State<'a> {
                 LexerToken::Word("loop") => todo!(),
                 LexerToken::Word("break") => todo!(),
                 LexerToken::Word("continue") => todo!(),
-                LexerToken::Word("fn") => todo!(),
+                LexerToken::Word("fn") => self.parse_fn(options, tokens)?,
                 LexerToken::Word("let") => self.parse_let(options, tokens)?,
                 LexerToken::Word("mut") => self.parse_mut(options, tokens)?,
                 LexerToken::Word("return") => todo!(),
@@ -152,7 +155,7 @@ impl<'a> State<'a> {
         &mut self,
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
-    ) -> Result<Block<'a>, ParseError> {
+    ) -> Result<Block, ParseError> {
         let tkn = tokens.next();
         debug_assert_matches!(
             tkn,
@@ -166,11 +169,33 @@ impl<'a> State<'a> {
         self.variables.drain(len..);
         Ok(block)
     }
+    fn parse_fn(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<BlockToken, ParseError> {
+        let tkn = tokens.next();
+        debug_assert_matches!(
+            tkn,
+            Some(LexerItem {
+                token: LexerToken::Word("fn"),
+                range: _
+            })
+        );
+        let Some(LexerToken::Word(fn_name)) = tokens.next().map(|t| t.token) else {
+            return Err(ParseError::ExpectedFnName);
+        };
+        let vars = 0;
+        let fun_var = self.funs.len().strict_cast::<u32>();
+        let block = self.parse_block_inner(options, tokens)?;
+        self.funs.push(fn_name);
+        Ok(BlockToken::Function(fun_var, vars, block))
+    }
     fn parse_if(
         &mut self,
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
-    ) -> Result<BlockToken<'a>, ParseError> {
+    ) -> Result<BlockToken, ParseError> {
         let tkn = tokens.next();
         debug_assert_matches!(
             tkn,
@@ -208,7 +233,7 @@ impl<'a> State<'a> {
         &mut self,
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
-    ) -> Result<BlockToken<'a>, ParseError> {
+    ) -> Result<BlockToken, ParseError> {
         let tkn = tokens.next();
         debug_assert_matches!(
             tkn,
@@ -234,7 +259,7 @@ impl<'a> State<'a> {
         &mut self,
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
-    ) -> Result<BlockToken<'a>, ParseError> {
+    ) -> Result<BlockToken, ParseError> {
         let tkn = tokens.next();
         debug_assert_matches!(
             tkn,
@@ -428,7 +453,7 @@ impl<'a> State<'a> {
         &mut self,
         options: ParserOptions<'_>,
         tokens: &mut PeekNth<LexerIter<'a>>,
-    ) -> Result<BlockToken<'a>, ParseError> {
+    ) -> Result<BlockToken, ParseError> {
         self.reset();
         let mut print = true;
         loop {
@@ -510,11 +535,8 @@ impl<'a> State<'a> {
         debug_assert_eq!(self.fn_inputs, [0; 0]);
     }
 }
-impl<'a> BlockToken<'a> {
-    pub fn parse_expression_str(
-        options: ParserOptions<'_>,
-        s: &'a str,
-    ) -> Result<Self, ParseError> {
+impl BlockToken {
+    pub fn parse_expression_str(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
         let mut tokens = peek_nth(LexerIter::new(s));
         let mut state = State::default();
         state.parse_expression(options, &mut tokens)

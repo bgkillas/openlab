@@ -20,15 +20,15 @@ struct ComputeInner<S: Write> {
     stdout: S,
 }
 #[derive(Debug)]
-pub struct Compute<'a, S: Write> {
-    block: Block<'a>,
+pub struct Compute<S: Write> {
+    block: Block,
     inner: ComputeInner<S>,
 }
-impl<'a, S: Write> Compute<'a, S> {
-    pub fn parse(options: ParserOptions<'_>, s: &'a str, stdout: S) -> Result<Self, ParseError> {
+impl<S: Write> Compute<S> {
+    pub fn parse(options: ParserOptions<'_>, s: &str, stdout: S) -> Result<Self, ParseError> {
         Ok(Self::from_block(Block::parse(options, s)?, stdout))
     }
-    pub fn from_block(block: Block<'a>, stdout: S) -> Self {
+    pub fn from_block(block: Block, stdout: S) -> Self {
         Self {
             block,
             inner: ComputeInner::new(stdout),
@@ -41,11 +41,11 @@ impl<'a, S: Write> Compute<'a, S> {
         ret.option()
     }
 }
-impl<'a> Compute<'a, Vec<u8>> {
-    pub fn parse_str(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
+impl Compute<Vec<u8>> {
+    pub fn parse_str(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
         Ok(Self::from_block_str(Block::parse(options, s)?))
     }
-    pub fn from_block_str(block: Block<'a>) -> Self {
+    pub fn from_block_str(block: Block) -> Self {
         Self {
             block,
             inner: ComputeInner::new(Vec::new()),
@@ -59,22 +59,22 @@ impl<'a> Compute<'a, Vec<u8>> {
         )
     }
 }
-impl<'a> Compute<'a, Stdout> {
-    pub fn parse_stdout(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
+impl Compute<Stdout> {
+    pub fn parse_stdout(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
         Ok(Self::from_block_stdout(Block::parse(options, s)?))
     }
-    pub fn from_block_stdout(block: Block<'a>) -> Self {
+    pub fn from_block_stdout(block: Block) -> Self {
         Self {
             block,
             inner: ComputeInner::new(stdout()),
         }
     }
 }
-impl<'a> Compute<'a, Empty> {
-    pub fn parse_empty(options: ParserOptions<'_>, s: &'a str) -> Result<Self, ParseError> {
+impl Compute<Empty> {
+    pub fn parse_empty(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
         Ok(Self::from_block_empty(Block::parse(options, s)?))
     }
-    pub fn from_block_empty(block: Block<'a>) -> Self {
+    pub fn from_block_empty(block: Block) -> Self {
         Self {
             block,
             inner: ComputeInner::new(empty()),
@@ -93,13 +93,13 @@ impl<S: Write> ComputeInner<S> {
             stdout,
         }
     }
-    pub fn block(&mut self, block: &Block<'_>) -> ReturnType<Number> {
+    pub fn block(&mut self, block: &Block) -> ReturnType<Number> {
         let len = self.stack.len();
         let ret = self.block_inner(block);
         self.stack.drain(len..);
         ret
     }
-    fn block_inner(&mut self, block: &Block<'_>) -> ReturnType<Number> {
+    fn block_inner(&mut self, block: &Block) -> ReturnType<Number> {
         for (i, block_token) in block.blocks.iter().enumerate() {
             match block_token {
                 BlockToken::Expression(expr) => {
@@ -120,7 +120,7 @@ impl<S: Write> ComputeInner<S> {
                         res?;
                     }
                 }
-                BlockToken::Function(_, _) => todo!(),
+                BlockToken::Function(_, _, _) => todo!(),
                 BlockToken::Assignment(var, expr) => {
                     let number = self.expr(expr)?;
                     self.var(*var, number);
