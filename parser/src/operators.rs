@@ -59,19 +59,25 @@ impl OperatorToken {
             Self::Operator(Operator::parse(state, token, iter, 0)?)
         })
     }
-    pub fn input_range(self) -> Range<u32> {
+    pub fn input_range<F>(self, custom: F) -> Range<u32>
+    where
+        F: FnOnce(u32) -> Range<u32>,
+    {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.input_range(),
-            Self::Function(f) => f.input_range(),
+            Self::Function(f) => f.input_range(custom),
             Self::LeftBracket(_) => {
                 unreachable!()
             }
         }
     }
-    pub fn inputs(self) -> u32 {
+    pub fn inputs<F>(self, custom: F) -> u32
+    where
+        F: FnOnce(u32) -> u32,
+    {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.inputs(),
-            Self::Function(f) => f.inputs(),
+            Self::Function(f) => f.inputs(custom),
             Self::LeftBracket(_) => {
                 unreachable!()
             }

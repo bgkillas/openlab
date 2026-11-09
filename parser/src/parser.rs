@@ -19,18 +19,11 @@ pub type Number = number::number::Number<NumberInner>;
 pub struct Expression {
     pub tokens: Box<[ExpressionToken]>,
 }
-#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
-pub enum Variable {
-    Variable(u32),
-    Function(u32),
-    Global(u32),
-    None,
-}
 #[derive(PartialEq, Clone, Debug)]
 pub enum ExpressionToken {
     Block(Block),
     Number(Number),
-    Variable(Variable),
+    Variable(u32),
     Function(Function),
 }
 #[derive(PartialEq, Clone, Default, Debug)]
@@ -40,12 +33,14 @@ pub struct Block {
 #[derive(PartialEq, Clone, Debug)]
 pub enum BlockToken {
     Block(Block),
-    Function(u32, u32, Block),
+    Function(u32, Block),
     Expression(Expression),
-    Assignment(Variable, Expression),
+    LetAssignment(Expression),
+    Assignment(u32, Expression),
     Return(Expression),
     PrintExpression(Expression),
-    PrintAssignment(Variable, Expression),
+    PrintAssignment(u32, Expression),
+    PrintLetAssignment(Expression),
     PrintReturn(Expression),
     If(Expression, Block, Option<Block>),
 }
@@ -80,13 +75,13 @@ impl Block {
     }
 }
 #[derive(Debug)]
-pub(crate) struct State<'a> {
+pub struct State<'a> {
     pub expression: Vec<ExpressionToken>,
     pub operator_stack: Vec<OperatorToken>,
     pub fn_inputs: Vec<u32>,
     pub input_left: bool,
     pub variables: Vec<&'a str>,
-    pub funs: Vec<&'a str>,
+    pub funs: Vec<(&'a str, u32)>,
 }
 #[expect(clippy::derivable_impls)]
 impl Default for State<'_> {
@@ -99,6 +94,18 @@ impl Default for State<'_> {
             variables: Vec::new(),
             funs: Vec::new(),
         }
+    }
+}
+fn custom_input_range(state: &State) -> impl FnOnce(u32) -> core::ops::Range<u32> {
+    |c: u32| {
+        let (_, n) = state.funs[c.strict_cast::<usize>()];
+        n..n + 1
+    }
+}
+fn custom_inputs(state: &State) -> impl FnOnce(u32) -> u32 {
+    |c: u32| {
+        let (_, n) = state.funs[c.strict_cast::<usize>()];
+        n
     }
 }
 fn get_let_mut_vars<'a>(
@@ -143,6 +150,7 @@ impl<'a> State<'a> {
                     tokens.next();
                     break;
                 }
+                LexerToken::NewLine => continue,
                 _ => self.parse_expression(options, tokens)?,
             };
             blocks.push(part);
@@ -165,8 +173,10 @@ impl<'a> State<'a> {
             })
         );
         let len = self.variables.len();
+        let fun_len = self.funs.len();
         let block = self.parse_block(options, tokens)?;
         self.variables.drain(len..);
+        self.funs.drain(fun_len..);
         Ok(block)
     }
     fn parse_fn(
@@ -185,11 +195,27 @@ impl<'a> State<'a> {
         let Some(LexerToken::Word(fn_name)) = tokens.next().map(|t| t.token) else {
             return Err(ParseError::ExpectedFnName);
         };
-        let vars = 0;
-        let fun_var = self.funs.len().strict_cast::<u32>();
+        let Some(LexerToken::LeftParenthesis) = tokens.next().map(|t| t.token) else {
+            return Err(ParseError::UnexpectedToken);
+        };
+        let mut vars: u32 = 0;
+        while let Some(LexerToken::Word(var)) = tokens
+            .next_if(|t| matches!(t.token, LexerToken::Word(_)))
+            .map(|t| t.token)
+        {
+            vars += 1;
+            self.variables.push(var);
+            match tokens.next().map(|t| t.token) {
+                Some(LexerToken::Comma) => {}
+                Some(LexerToken::RightParenthesis) => break,
+                _ => return Err(ParseError::UnexpectedToken),
+            }
+        }
         let block = self.parse_block_inner(options, tokens)?;
-        self.funs.push(fn_name);
-        Ok(BlockToken::Function(fun_var, vars, block))
+        self.funs.push((fn_name, vars));
+        self.variables
+            .drain(self.variables.len() - vars.strict_cast::<usize>()..);
+        Ok(BlockToken::Function(vars, block))
     }
     fn parse_if(
         &mut self,
@@ -243,15 +269,14 @@ impl<'a> State<'a> {
             })
         );
         let var_name = get_let_mut_vars(options, tokens)?;
-        let var = Variable::Variable(self.variables.len().strict_cast());
         if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
             return Err(ParseError::UnexpectedToken);
         }
         let expr = self.parse_expression(options, tokens)?;
         self.variables.push(var_name);
         Ok(match expr {
-            BlockToken::Expression(exp) => BlockToken::Assignment(var, exp),
-            BlockToken::PrintExpression(exp) => BlockToken::PrintAssignment(var, exp),
+            BlockToken::Expression(exp) => BlockToken::LetAssignment(exp),
+            BlockToken::PrintExpression(exp) => BlockToken::PrintLetAssignment(exp),
             _ => unreachable!(),
         })
     }
@@ -275,14 +300,13 @@ impl<'a> State<'a> {
             .rposition(|s| *s == var_name)
             .ok_or(ParseError::NoVarNamed)?
             .strict_cast();
-        let var = Variable::Variable(pos);
         if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
             return Err(ParseError::UnexpectedToken);
         }
         let expr = self.parse_expression(options, tokens)?;
         Ok(match expr {
-            BlockToken::Expression(exp) => BlockToken::Assignment(var, exp),
-            BlockToken::PrintExpression(exp) => BlockToken::PrintAssignment(var, exp),
+            BlockToken::Expression(exp) => BlockToken::Assignment(pos, exp),
+            BlockToken::PrintExpression(exp) => BlockToken::PrintAssignment(pos, exp),
             _ => unreachable!(),
         })
     }
@@ -315,8 +339,7 @@ impl<'a> State<'a> {
             self.push_operator(OperatorToken::Operator(Operator::MulInner));
         }
         self.input_left = true;
-        self.expression
-            .push(ExpressionToken::Variable(Variable::Variable(var)));
+        self.expression.push(ExpressionToken::Variable(var));
     }
     fn push_number(&mut self, number: NumberInner) {
         if self.input_left {
@@ -386,7 +409,7 @@ impl<'a> State<'a> {
                         inputs -= 1;
                         inner_inputs = width;
                     } else {
-                        inner_inputs += f.inputs() - 1;
+                        inner_inputs += f.inputs(custom_inputs(self)) - 1;
                     }
                 }
             }
@@ -420,12 +443,14 @@ impl<'a> State<'a> {
                     .operator_stack
                     .pop_if(|o| matches!(o, OperatorToken::Function(_)))
                 {
-                    if !fun.input_range().contains(&inputs) {
-                        return Err(if fun.input_range().start < inputs {
-                            ParseError::MissingInput
-                        } else {
-                            ParseError::TooMuchInput
-                        });
+                    if !fun.input_range(custom_input_range(self)).contains(&inputs) {
+                        return Err(
+                            if fun.input_range(custom_input_range(self)).start < inputs {
+                                ParseError::MissingInput
+                            } else {
+                                ParseError::TooMuchInput
+                            },
+                        );
                     }
                     self.expression.push(ExpressionToken::Function(fun));
                 } else if inputs != 1 || !self.input_left {
@@ -499,6 +524,13 @@ impl<'a> State<'a> {
                     if let Some(last) = self.fn_inputs.last_mut() {
                         *last = last.checked_add(1).unwrap();
                     }
+                }
+                LexerToken::Word(str)
+                    if let Some(var) = self.funs.iter().rposition(|&(s, _)| s == str) =>
+                {
+                    self.push_operator(OperatorToken::Function(Function::Custom(
+                        var.strict_cast(),
+                    )));
                 }
                 LexerToken::Word(str) if let Ok(fun) = Function::from_str(str) => {
                     self.push_operator(OperatorToken::Function(fun));

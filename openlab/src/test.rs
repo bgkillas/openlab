@@ -3,7 +3,7 @@ use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
 use parser::operators::Operator;
 use parser::options::ParserOptions;
-use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, Variable};
+use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number};
 use parser::units::{Dimension, DistanceUnit, MetricPrefix, Prefix, TimeUnit, Unit};
 fn block<const N: usize>(blocks: [BlockToken; N]) -> Block {
     Block {
@@ -31,8 +31,8 @@ fn ifelse<'a, const N: usize>(p: [ExpressionToken; N], ifthen: Block, ifelse: Bl
         Some(ifelse),
     )
 }
-fn fun(fn_name: u32, vars: u32, block: Block) -> BlockToken {
-    BlockToken::Function(fn_name, vars, block)
+fn fun(vars: u32, block: Block) -> BlockToken {
+    BlockToken::Function(vars, block)
 }
 #[expect(unused)]
 fn ifthen<'a, const N: usize>(p: [ExpressionToken; N], ifthen: Block) -> BlockToken {
@@ -50,19 +50,16 @@ fn print_expr<const N: usize>(blocks: [ExpressionToken; N]) -> BlockToken {
     })
 }
 fn var(var: u32) -> ExpressionToken {
-    ExpressionToken::Variable(Variable::Variable(var))
+    ExpressionToken::Variable(var)
 }
-fn let_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> BlockToken {
-    BlockToken::Assignment(
-        Variable::Variable(var),
-        Expression {
-            tokens: Box::new(blocks),
-        },
-    )
+fn let_expr<const N: usize>(blocks: [ExpressionToken; N]) -> BlockToken {
+    BlockToken::LetAssignment(Expression {
+        tokens: Box::new(blocks),
+    })
 }
 fn mut_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> BlockToken {
     BlockToken::Assignment(
-        Variable::Variable(var),
+        var,
         Expression {
             tokens: Box::new(blocks),
         },
@@ -71,7 +68,7 @@ fn mut_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> BlockToke
 #[expect(unused)]
 fn let_print_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> BlockToken {
     BlockToken::PrintAssignment(
-        Variable::Variable(var),
+        var,
         Expression {
             tokens: Box::new(blocks),
         },
@@ -106,8 +103,8 @@ fn assert_block(
     res: Option<Number>,
 ) {
     assert_eq!(block, Block::parse(options, s).unwrap());
-    let mut compute = Compute::from_block_str(block);
-    let (ret, str) = compute.compute_str();
+    let mut compute = Compute::<Vec<u8>>::default();
+    let (ret, str) = compute.compute_str(&block);
     assert_eq!(res, ret);
     assert_eq!(stdout, str);
 }
@@ -240,24 +237,21 @@ fn var_test() {
             assert_eq(a,2);
             assert_eq(b,3);",
         block([
-            let_expr(0, [expr_number(2.0)]),
-            let_expr(1, [expr_number(3.0)]),
+            let_expr([expr_number(2.0)]),
+            let_expr([expr_number(3.0)]),
             block_token([
-                let_expr(2, [expr_number(2.0), var(0), expr_op(Operator::MulInner)]),
-                let_expr(
-                    3,
-                    [
-                        expr_number(2.0),
-                        var(2),
-                        expr_op(Operator::MulInner),
-                        var(1),
-                        expr_op(Operator::Mul),
-                    ],
-                ),
+                let_expr([expr_number(2.0), var(0), expr_op(Operator::MulInner)]),
+                let_expr([
+                    expr_number(2.0),
+                    var(2),
+                    expr_op(Operator::MulInner),
+                    var(1),
+                    expr_op(Operator::Mul),
+                ]),
                 expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
                 expr([var(3), expr_number(24.0), expr_fun(Function::AssertEq)]),
             ]),
-            let_expr(2, [expr_number(4.0)]),
+            let_expr([expr_number(4.0)]),
             expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
             expr([var(0), expr_number(2.0), expr_fun(Function::AssertEq)]),
             expr([var(1), expr_number(3.0), expr_fun(Function::AssertEq)]),
@@ -284,8 +278,8 @@ fn var_test_mut() {
             assert_eq(a,4);
             assert_eq(b,24);",
         block([
-            let_expr(0, [expr_number(2.0)]),
-            let_expr(1, [expr_number(3.0)]),
+            let_expr([expr_number(2.0)]),
+            let_expr([expr_number(3.0)]),
             block_token([
                 mut_expr(0, [expr_number(2.0), var(0), expr_op(Operator::MulInner)]),
                 mut_expr(
@@ -301,7 +295,7 @@ fn var_test_mut() {
                 expr([var(0), expr_number(4.0), expr_fun(Function::AssertEq)]),
                 expr([var(1), expr_number(24.0), expr_fun(Function::AssertEq)]),
             ]),
-            let_expr(2, [expr_number(4.0)]),
+            let_expr([expr_number(4.0)]),
             expr([var(2), expr_number(4.0), expr_fun(Function::AssertEq)]),
             expr([var(0), expr_number(4.0), expr_fun(Function::AssertEq)]),
             expr([var(1), expr_number(24.0), expr_fun(Function::AssertEq)]),
@@ -338,19 +332,27 @@ fn test_fn() {
     let options = ParserOptions::new(None);
     assert_block(
         options,
-        "fn foo(a,b,c){a+b+c}",
-        block([fun(
-            0,
-            3,
-            block([print_expr([
-                var(0),
-                var(1),
-                expr_op(Operator::Add),
-                var(2),
-                expr_op(Operator::Add),
-            ])]),
-        )]),
+        "fn foo(a,b,c){a+b+c}
+        foo(1,2,3)",
+        block([
+            fun(
+                3,
+                block([print_expr([
+                    var(0),
+                    var(1),
+                    expr_op(Operator::Add),
+                    var(2),
+                    expr_op(Operator::Add),
+                ])]),
+            ),
+            print_expr([
+                expr_number(1.0),
+                expr_number(2.0),
+                expr_number(3.0),
+                expr_fun(Function::Custom(0)),
+            ]),
+        ]),
         "",
-        Some(number(3.0)),
+        Some(number(6.0)),
     )
 }

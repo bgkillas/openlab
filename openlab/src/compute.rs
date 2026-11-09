@@ -9,76 +9,27 @@ use parser::number::matrix::size::MatrixDimension;
 use parser::number::traits::number::NumberImpl as _;
 use parser::number::traits::pow::{Pow, Root};
 use parser::operators::Operator;
-use parser::options::ParserOptions;
-use parser::parser::{
-    Block, BlockToken, Expression, ExpressionToken, Number, ParseError, Variable,
-};
-use std::io::{Empty, Stdout, Write, empty, stdout};
+use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number};
+use std::io::{Stdout, Write, stdout};
 #[derive(Debug, Default)]
-struct ComputeInner<S: Write> {
+pub struct Compute<'a, S: Write> {
     stack: Vec<Number>,
+    funs: Vec<(u32, &'a Block)>,
     stdout: S,
 }
-#[derive(Debug)]
-pub struct Compute<S: Write> {
-    block: Block,
-    inner: ComputeInner<S>,
-}
-impl<S: Write> Compute<S> {
-    pub fn parse(options: ParserOptions<'_>, s: &str, stdout: S) -> Result<Self, ParseError> {
-        Ok(Self::from_block(Block::parse(options, s)?, stdout))
-    }
-    pub fn from_block(block: Block, stdout: S) -> Self {
+impl Compute<'_, Stdout> {
+    pub fn stdout() -> Self {
         Self {
-            block,
-            inner: ComputeInner::new(stdout),
-        }
-    }
-    pub fn compute(&mut self) -> Option<Number> {
-        let old = self.inner.stack.len();
-        let ret = self.inner.block(&self.block);
-        debug_assert_eq!(self.inner.stack.len(), old);
-        ret.option()
-    }
-}
-impl Compute<Vec<u8>> {
-    pub fn parse_str(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
-        Ok(Self::from_block_str(Block::parse(options, s)?))
-    }
-    pub fn from_block_str(block: Block) -> Self {
-        Self {
-            block,
-            inner: ComputeInner::new(Vec::new()),
-        }
-    }
-    pub fn compute_str(&mut self) -> (Option<Number>, String) {
-        let ret = self.compute();
-        (
-            ret,
-            String::from_utf8(mem::take(&mut self.inner.stdout)).unwrap(),
-        )
-    }
-}
-impl Compute<Stdout> {
-    pub fn parse_stdout(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
-        Ok(Self::from_block_stdout(Block::parse(options, s)?))
-    }
-    pub fn from_block_stdout(block: Block) -> Self {
-        Self {
-            block,
-            inner: ComputeInner::new(stdout()),
+            stack: Vec::new(),
+            funs: Vec::new(),
+            stdout: stdout(),
         }
     }
 }
-impl Compute<Empty> {
-    pub fn parse_empty(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
-        Ok(Self::from_block_empty(Block::parse(options, s)?))
-    }
-    pub fn from_block_empty(block: Block) -> Self {
-        Self {
-            block,
-            inner: ComputeInner::new(empty()),
-        }
+impl<'a> Compute<'a, Vec<u8>> {
+    pub fn compute_str(&mut self, block: &'a Block) -> (Option<Number>, String) {
+        let ret = self.compute(block);
+        (ret, String::from_utf8(mem::take(&mut self.stdout)).unwrap())
     }
 }
 macro_rules! write_stdout {
@@ -86,20 +37,29 @@ macro_rules! write_stdout {
         $ident.stdout.write_fmt(format_args!($($tt)*)).unwrap();
     };
 }
-impl<S: Write> ComputeInner<S> {
+impl<'a, S: Write> Compute<'a, S> {
+    pub fn compute(&mut self, block: &'a Block) -> Option<Number> {
+        let old = self.stack.len();
+        let ret = self.block(block);
+        debug_assert_eq!(self.stack.len(), old);
+        ret.option()
+    }
     pub fn new(stdout: S) -> Self {
         Self {
             stack: Vec::new(),
+            funs: Vec::new(),
             stdout,
         }
     }
-    pub fn block(&mut self, block: &Block) -> ReturnType<Number> {
+    pub fn block(&mut self, block: &'a Block) -> ReturnType<Number> {
         let len = self.stack.len();
+        let fun_len = self.funs.len();
         let ret = self.block_inner(block);
         self.stack.drain(len..);
+        self.funs.drain(fun_len..);
         ret
     }
-    fn block_inner(&mut self, block: &Block) -> ReturnType<Number> {
+    fn block_inner(&mut self, block: &'a Block) -> ReturnType<Number> {
         for (i, block_token) in block.blocks.iter().enumerate() {
             match block_token {
                 BlockToken::Expression(expr) => {
@@ -120,15 +80,26 @@ impl<S: Write> ComputeInner<S> {
                         res?;
                     }
                 }
-                BlockToken::Function(_, _, _) => todo!(),
+                BlockToken::Function(vars, inner) => {
+                    self.let_fun(*vars, inner);
+                }
                 BlockToken::Assignment(var, expr) => {
                     let number = self.expr(expr)?;
-                    self.var(*var, number);
+                    self.mut_var(*var, number);
                 }
                 BlockToken::PrintAssignment(var, expr) => {
                     let number = self.expr(expr)?;
                     write_stdout!(self, "{number:?}\n");
-                    self.var(*var, number);
+                    self.mut_var(*var, number);
+                }
+                BlockToken::LetAssignment(expr) => {
+                    let number = self.expr(expr)?;
+                    self.let_var(number);
+                }
+                BlockToken::PrintLetAssignment(expr) => {
+                    let number = self.expr(expr)?;
+                    write_stdout!(self, "{number:?}\n");
+                    self.let_var(number);
                 }
                 BlockToken::Return(expr) => {
                     return ReturnType::Return(if expr.tokens.is_empty() {
@@ -178,21 +149,16 @@ impl<S: Write> ComputeInner<S> {
         }
         ReturnType::None
     }
-    fn var(&mut self, var: Variable, number: Number) {
-        match var {
-            Variable::Variable(v) => {
-                if self.stack.len() == v.strict_cast::<usize>() {
-                    self.stack.push(number);
-                } else {
-                    self.stack[v.strict_cast::<usize>()] = number;
-                }
-            }
-            Variable::Function(_) => todo!(),
-            Variable::Global(_) => todo!(),
-            Variable::None => todo!(),
-        }
+    fn let_fun(&mut self, vars: u32, block: &'a Block) {
+        self.funs.push((vars, block));
     }
-    fn expr(&mut self, expr: &Expression) -> ReturnType<Number> {
+    fn let_var(&mut self, number: Number) {
+        self.stack.push(number);
+    }
+    fn mut_var(&mut self, var: u32, number: Number) {
+        self.stack[var.strict_cast::<usize>()] = number;
+    }
+    fn expr(&mut self, expr: &'a Expression) -> ReturnType<Number> {
         let len = self.stack.len();
         for token in &expr.tokens {
             let number = match token {
@@ -200,10 +166,7 @@ impl<S: Write> ComputeInner<S> {
                 &ExpressionToken::Function(fun) => {
                     self.fun(fun).map_or_default(ReturnType::Last)?
                 }
-                &ExpressionToken::Variable(Variable::Variable(v)) => {
-                    self.stack[v.strict_cast::<usize>()].clone()
-                }
-                ExpressionToken::Variable(_) => todo!(),
+                &ExpressionToken::Variable(v) => self.stack[v.strict_cast::<usize>()].clone(),
                 ExpressionToken::Block(block) => self.block(block)?,
             };
             self.stack.push(number);
@@ -212,12 +175,23 @@ impl<S: Write> ComputeInner<S> {
         debug_assert_eq!(self.stack.len(), len);
         res.map_or_default(ReturnType::Last)
     }
+    fn custom_fun(&mut self, fun: u32) -> Option<Number> {
+        let (count, block) = self.funs[fun.strict_cast::<usize>()];
+        let ret = self.block_inner(block).option()?;
+        self.stack
+            .drain(self.stack.len().checked_sub(count.strict_cast())?..);
+        Some(ret)
+    }
     fn fun(&mut self, fun: Function) -> Option<Number> {
-        let mut inputs = self.stack.drain(
-            self.stack
-                .len()
-                .checked_sub(fun.inputs().strict_cast::<usize>())?..,
-        );
+        if let Function::Custom(cfun) = fun {
+            return self.custom_fun(cfun);
+        }
+        let input_count = fun
+            .inputs(|c| self.funs[c.strict_cast::<usize>()].0)
+            .strict_cast::<usize>();
+        let mut inputs = self
+            .stack
+            .drain(self.stack.len().checked_sub(input_count)?..);
         let mut next = || inputs.next().unwrap();
         match fun {
             Function::Vector(i) => {

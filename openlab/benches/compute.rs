@@ -1,7 +1,9 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use openlab::compute::Compute;
 use parser::options::ParserOptions;
+use parser::parser::Block;
 use std::hint::black_box;
+use std::io::Empty;
 fn compute_matrix(crit: &mut Criterion) {
     let size = 16;
     let s = format!(
@@ -17,13 +19,19 @@ fn compute_matrix(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("sample");
     group.sample_size(128);
     {
-        let mut val = black_box(Compute::parse_empty(ParserOptions::new(None), &s).unwrap());
-        group.bench_function("make_matrix", |bencher| bencher.iter(|| val.compute()));
+        let val = black_box(Block::parse(ParserOptions::new(None), &s).unwrap());
+        let mut compute = Compute::<Empty>::default();
+        group.bench_function("make_matrix", |bencher| {
+            bencher.iter(|| compute.compute(&val))
+        });
     }
     {
         let str = format!("{s}*{s}");
-        let mut val = black_box(Compute::parse_empty(ParserOptions::new(None), &str).unwrap());
-        group.bench_function("mul_matrix", |bencher| bencher.iter(|| val.compute()));
+        let val = black_box(Block::parse(ParserOptions::new(None), &str).unwrap());
+        let mut compute = Compute::<Empty>::default();
+        group.bench_function("mul_matrix", |bencher| {
+            bencher.iter(|| compute.compute(&val))
+        });
     }
     group.finish()
 }

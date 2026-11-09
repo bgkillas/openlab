@@ -1,6 +1,7 @@
 use openlab::compute::Compute;
 use openlab::parser::lexer::iter::LexerIter;
 use openlab::parser::options::ParserOptions;
+use openlab::parser::parser::Block;
 use std::env::args;
 fn main() {
     let mut args = args();
@@ -10,11 +11,11 @@ fn main() {
     let config_dir_path = config_dir.as_deref();
     println!("{:#?}", LexerIter::new(&expr).collect::<Vec<_>>());
     let options = ParserOptions::new(config_dir_path);
-    let block = Compute::parse_stdout(options, &expr);
+    let block = Block::parse(options, &expr);
     println!("{block:#?}");
-    if let Ok(mut inner) = block {
+    if let Ok(inner) = block {
         let tmr = std::time::Instant::now();
-        let compute = inner.compute();
+        let compute = Compute::stdout().compute(&inner);
         let time = tmr.elapsed().as_nanos();
         println!("{compute:#?}");
         println!("{time}");

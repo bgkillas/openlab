@@ -28,23 +28,29 @@ impl FromStr for Function {
     }
 }
 impl Function {
-    pub fn input_range(self) -> Range<u32> {
+    pub fn input_range<F>(self, custom: F) -> Range<u32>
+    where
+        F: FnOnce(u32) -> Range<u32>,
+    {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.input_range(),
             Self::Abs => 1..2,
             Self::AssertEq => 2..3,
             Self::Vector(_) | Self::Matrix(_, _) | Self::List(_) => 0..u32::MAX,
-            Self::Custom(_) => todo!(),
+            Self::Custom(c) => custom(c),
         }
     }
-    pub fn inputs(self) -> u32 {
+    pub fn inputs<F>(self, custom: F) -> u32
+    where
+        F: FnOnce(u32) -> u32,
+    {
         match self {
             Self::Operator(o) | Self::ComponentWise(o) => o.inputs(),
             Self::Abs => 1,
             Self::AssertEq => 2,
             Self::Vector(v) | Self::List(v) => v,
             Self::Matrix(v, l) => v * l,
-            Self::Custom(_) => todo!(),
+            Self::Custom(fun) => custom(fun),
         }
     }
     pub fn inner_vars(self) -> u8 {
