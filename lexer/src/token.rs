@@ -2,19 +2,15 @@ use crate::iter::LexerIter;
 use core::range::Range;
 use core::str::FromStr as _;
 use unicode_segmentation::UnicodeSegmentation as _;
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub struct LexerItem<'a> {
-    pub token: LexerToken<'a>,
-    pub range: Range<usize>,
-}
+pub type LexerItem<'a> = (Range<usize>, LexerToken<'a>);
 impl<'a> PartialEq<LexerToken<'a>> for LexerItem<'_> {
     fn eq(&self, other: &LexerToken<'a>) -> bool {
-        self.token == *other
+        self.1 == *other
     }
 }
 impl<'a> PartialEq<LexerItem<'a>> for LexerToken<'_> {
     fn eq(&self, other: &LexerItem<'a>) -> bool {
-        *self == other.token
+        *self == other.1
     }
 }
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
@@ -135,10 +131,7 @@ impl<'a> LexerIter<'a> {
                 LexerToken::Word(&self.source[start..self.cursor])
             }
         };
-        Some(LexerItem {
-            token,
-            range: Range::from(init..self.cursor),
-        })
+        Some((Range::from(init..self.cursor), token))
     }
     pub fn get_string(&mut self) -> Option<LexerToken<'a>> {
         let start = self.cursor;

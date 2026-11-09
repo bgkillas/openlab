@@ -356,3 +356,39 @@ fn test_fn() {
         Some(number(6.0)),
     )
 }
+#[test]
+fn test_fib() {
+    let options = ParserOptions::new(None);
+    assert_block(
+        options,
+        "fn fib(n){if n == 1 {1} else if n == 0 {0} else {fib(n-1)+fib(n-2)}}
+        fib(5)",
+        block([
+            fun(
+                1,
+                block([ifelse(
+                    [var(0), expr_number(1.0), expr_op(Operator::Eq)],
+                    block([print_expr([expr_number(1.0)])]),
+                    block([ifelse(
+                        [var(0), expr_number(0.0), expr_op(Operator::Eq)],
+                        block([print_expr([expr_number(0.0)])]),
+                        block([print_expr([
+                            var(0),
+                            expr_number(1.0),
+                            expr_op(Operator::Sub),
+                            expr_fun(Function::Custom(0)),
+                            var(0),
+                            expr_number(2.0),
+                            expr_op(Operator::Sub),
+                            expr_fun(Function::Custom(0)),
+                            expr_op(Operator::Add),
+                        ])]),
+                    )]),
+                )]),
+            ),
+            print_expr([expr_number(5.0), expr_fun(Function::Custom(0))]),
+        ]),
+        "",
+        Some(number(5.0)),
+    )
+}

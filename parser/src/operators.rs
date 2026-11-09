@@ -19,6 +19,14 @@ pub enum Operator {
     Mod,
     Identity,
     Transpose,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
+    Eq,
+    NotEq,
+    And,
+    Or,
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OperatorToken {
@@ -44,15 +52,14 @@ impl OperatorToken {
                 LexerToken::LeftParenthesis => Self::LeftBracket(Bracket::Parenthesis),
                 LexerToken::Bar => Self::LeftBracket(Bracket::Absolute),
                 LexerToken::Colon => {
-                    let ret =
-                        Self::ComponentWise(Operator::parse(state, iter.peek()?.token, iter, 1)?);
+                    let ret = Self::ComponentWise(Operator::parse(state, iter.peek()?.1, iter, 1)?);
                     iter.next();
                     ret
                 }
                 _ => Self::Operator(Operator::parse(state, token, iter, 0)?),
             }
         } else if token == LexerToken::Colon {
-            let ret = Self::Operator(Operator::parse(state, iter.peek()?.token, iter, 1)?);
+            let ret = Self::Operator(Operator::parse(state, iter.peek()?.1, iter, 1)?);
             iter.next();
             ret
         } else {
@@ -127,8 +134,8 @@ impl Operator {
                 LexerToken::Plus => Self::Add,
                 LexerToken::Minus => Self::Sub,
                 LexerToken::Asterisk
-                    if let Some(&t) = iter.peek_nth(i)
-                        && t.token == LexerToken::Asterisk =>
+                    if let Some(&(_, t)) = iter.peek_nth(i)
+                        && t == LexerToken::Asterisk =>
                 {
                     iter.next();
                     Self::Pow
@@ -136,8 +143,8 @@ impl Operator {
                 LexerToken::SingleQuote => Self::Transpose,
                 LexerToken::Asterisk => Self::Mul,
                 LexerToken::FowardSlash
-                    if let Some(&t) = iter.peek_nth(i)
-                        && t.token == LexerToken::FowardSlash =>
+                    if let Some(&(_, t)) = iter.peek_nth(i)
+                        && t == LexerToken::FowardSlash =>
                 {
                     iter.next();
                     Self::Root
@@ -145,7 +152,39 @@ impl Operator {
                 LexerToken::FowardSlash => Self::Div,
                 LexerToken::Caret => Self::Pow,
                 LexerToken::Percent => Self::Mod,
+                LexerToken::Word("and") => Self::And,
+                LexerToken::Word("or") => Self::Or,
+                LexerToken::Equal
+                    if let Some(&(_, t)) = iter.peek_nth(i)
+                        && t == LexerToken::Equal =>
+                {
+                    iter.next();
+                    Self::Eq
+                }
+                LexerToken::ExclamationMark
+                    if let Some(&(_, t)) = iter.peek_nth(i)
+                        && t == LexerToken::Equal =>
+                {
+                    iter.next();
+                    Self::NotEq
+                }
                 LexerToken::ExclamationMark => Self::Factorial,
+                LexerToken::LeftAngleBracket
+                    if let Some(&(_, t)) = iter.peek_nth(i)
+                        && t == LexerToken::Equal =>
+                {
+                    iter.next();
+                    Self::LessEq
+                }
+                LexerToken::RightAngleBracket
+                    if let Some(&(_, t)) = iter.peek_nth(i)
+                        && t == LexerToken::Equal =>
+                {
+                    iter.next();
+                    Self::GreaterEq
+                }
+                LexerToken::LeftAngleBracket => Self::Less,
+                LexerToken::RightAngleBracket => Self::Greater,
                 _ => return None,
             }
         } else {
@@ -171,7 +210,15 @@ impl Operator {
             | Self::Div
             | Self::Pow
             | Self::Root
-            | Self::Mod => 2..3,
+            | Self::Mod
+            | Self::Less
+            | Self::LessEq
+            | Self::Greater
+            | Self::GreaterEq
+            | Self::Eq
+            | Self::NotEq
+            | Self::And
+            | Self::Or => 2..3,
         }
     }
     pub fn inputs(self) -> u32 {
@@ -188,7 +235,15 @@ impl Operator {
             | Self::Div
             | Self::Pow
             | Self::Root
-            | Self::Mod => 2,
+            | Self::Mod
+            | Self::Less
+            | Self::LessEq
+            | Self::Greater
+            | Self::GreaterEq
+            | Self::Eq
+            | Self::NotEq
+            | Self::And
+            | Self::Or => 2,
         }
     }
     pub fn inner_vars(self) -> u8 {
@@ -209,14 +264,14 @@ impl Operator {
     }
     pub fn precedence(self) -> u8 {
         match self {
-            /*Self::Or => 0,
+            Self::Or => 0,
             Self::And => 1,
-            Self::Equal
-            | Self::NotEqual
+            Self::Less
+            | Self::LessEq
             | Self::Greater
-            | Self::Less
-            | Self::LessEqual
-            | Self::GreaterEqual => 2,*/
+            | Self::GreaterEq
+            | Self::Eq
+            | Self::NotEq => 2,
             //Self::Solve => 3,
             //Self::Convert => 4,
             Self::Add | Self::Sub => 5,
@@ -229,14 +284,27 @@ impl Operator {
     }
     pub fn left_associative(self) -> bool {
         match self {
-            Self::Add | Self::Sub | Self::Mul | Self::MulInner | Self::Div | Self::Mod => true,
+            Self::Add
+            | Self::Sub
+            | Self::Mul
+            | Self::MulInner
+            | Self::Div
+            | Self::Mod
+            | Self::And
+            | Self::Or => true,
             Self::Pow
             | Self::Root
             | Self::Negate
             | Self::Identity
             | Self::Factorial
             | Self::SubFactorial
-            | Self::Transpose => false,
+            | Self::Transpose
+            | Self::Less
+            | Self::LessEq
+            | Self::Greater
+            | Self::GreaterEq
+            | Self::Eq
+            | Self::NotEq => false,
         }
     }
 }

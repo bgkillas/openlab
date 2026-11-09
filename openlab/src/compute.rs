@@ -9,10 +9,11 @@ use parser::number::matrix::size::MatrixDimension;
 use parser::number::traits::number::NumberImpl as _;
 use parser::number::traits::pow::{Pow, Root};
 use parser::operators::Operator;
-use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number};
+use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, NumberInner};
 use std::io::{Stdout, Write, stdout};
 #[derive(Debug, Default)]
 pub struct Compute<'a, S: Write> {
+    stack_start: usize,
     stack: Vec<Number>,
     funs: Vec<(u32, &'a Block)>,
     stdout: S,
@@ -20,6 +21,7 @@ pub struct Compute<'a, S: Write> {
 impl Compute<'_, Stdout> {
     pub fn stdout() -> Self {
         Self {
+            stack_start: 0,
             stack: Vec::new(),
             funs: Vec::new(),
             stdout: stdout(),
@@ -46,6 +48,7 @@ impl<'a, S: Write> Compute<'a, S> {
     }
     pub fn new(stdout: S) -> Self {
         Self {
+            stack_start: 0,
             stack: Vec::new(),
             funs: Vec::new(),
             stdout,
@@ -166,7 +169,9 @@ impl<'a, S: Write> Compute<'a, S> {
                 &ExpressionToken::Function(fun) => {
                     self.fun(fun).map_or_default(ReturnType::Last)?
                 }
-                &ExpressionToken::Variable(v) => self.stack[v.strict_cast::<usize>()].clone(),
+                &ExpressionToken::Variable(v) => {
+                    self.stack[self.stack_start + v.strict_cast::<usize>()].clone()
+                }
                 ExpressionToken::Block(block) => self.block(block)?,
             };
             self.stack.push(number);
@@ -177,9 +182,12 @@ impl<'a, S: Write> Compute<'a, S> {
     }
     fn custom_fun(&mut self, fun: u32) -> Option<Number> {
         let (count, block) = self.funs[fun.strict_cast::<usize>()];
+        let last = self.stack_start;
+        self.stack_start = self.stack.len() - count.strict_cast::<usize>();
         let ret = self.block_inner(block).option()?;
         self.stack
             .drain(self.stack.len().checked_sub(count.strict_cast())?..);
+        self.stack_start = last;
         Some(ret)
     }
     fn fun(&mut self, fun: Function) -> Option<Number> {
@@ -258,6 +266,22 @@ impl<'a, S: Write> Compute<'a, S> {
                 Operator::Factorial => todo!(),
                 Operator::SubFactorial => todo!(),
                 Operator::Mod => todo!(),
+                Operator::Less => todo!(),
+                Operator::LessEq => todo!(),
+                Operator::Greater => todo!(),
+                Operator::GreaterEq => todo!(),
+                Operator::Eq => Some(Number::Complex(if next() == next() {
+                    NumberInner::one()
+                } else {
+                    NumberInner::zero()
+                })),
+                Operator::NotEq => Some(Number::Complex(if next() == next() {
+                    NumberInner::zero()
+                } else {
+                    NumberInner::one()
+                })),
+                Operator::And => todo!(),
+                Operator::Or => todo!(),
             },
             Function::ComponentWise(o) => match o {
                 Operator::Add => next().component_wise(&next(), Add::add),
@@ -269,7 +293,16 @@ impl<'a, S: Write> Compute<'a, S> {
                 Operator::Factorial => todo!(),
                 Operator::SubFactorial => todo!(),
                 Operator::Mod => todo!(),
-                Operator::Identity | Operator::Negate | Operator::Transpose => unreachable!(),
+                Operator::Less => todo!(),
+                Operator::LessEq => todo!(),
+                Operator::Greater => todo!(),
+                Operator::GreaterEq => todo!(),
+                Operator::Eq => todo!(),
+                Operator::NotEq => todo!(),
+                Operator::And => todo!(),
+                Operator::Or => todo!(),
+                Operator::Negate => Some(-next()),
+                Operator::Identity | Operator::Transpose => Some(next()),
             },
             _ => todo!(),
         }

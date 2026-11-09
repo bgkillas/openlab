@@ -6,7 +6,7 @@ use core::range::Range;
 use core::str::FromStr as _;
 use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
-use lexer::token::{LexerItem, LexerToken};
+use lexer::token::LexerToken;
 use number::float::complex::Complex;
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
@@ -50,7 +50,7 @@ pub struct FormatStr<'a> {
 }
 pub struct FormatOptions;
 #[derive(Clone, Debug)]
-pub enum ParseError {
+pub enum ParseErrorInner {
     MissingInput,
     TooMuchInput,
     LexerError,
@@ -60,6 +60,22 @@ pub enum ParseError {
     NoVarNamed,
     IfExpectedExpression,
     ExpectedFnName,
+}
+impl ParseErrorInner {
+    pub fn range<R>(self, range: R) -> ParseError
+    where
+        R: Into<Range<usize>>,
+    {
+        ParseError {
+            inner: self,
+            range: range.into(),
+        }
+    }
+}
+#[derive(Clone, Debug)]
+pub struct ParseError {
+    pub inner: ParseErrorInner,
+    pub range: Range<usize>,
 }
 impl Block {
     pub fn parse(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {
@@ -112,12 +128,13 @@ fn get_let_mut_vars<'a>(
     _: ParserOptions<'_>,
     tokens: &mut PeekNth<LexerIter<'a>>,
 ) -> Result<&'a str, ParseError> {
-    let token = tokens
-        .next()
-        .map_or(Err(ParseError::MissingInput), |t| Ok(t.token))?;
-    match token {
-        LexerToken::Word(word) => Ok(word),
-        _ => Err(ParseError::UnexpectedToken),
+    let Some(token) = tokens.next() else {
+        return Err(ParseErrorInner::MissingInput.range(0..0));
+    };
+    if let LexerToken::Word(word) = token.1 {
+        Ok(word)
+    } else {
+        Err(ParseErrorInner::UnexpectedToken.range(token.0))
     }
 }
 impl<'a> State<'a> {
@@ -128,8 +145,10 @@ impl<'a> State<'a> {
     ) -> Result<Block, ParseError> {
         let mut blocks = Vec::new();
         while let Some(token) = tokens.peek() {
-            let part = match token.token {
-                LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
+            let part = match token.1 {
+                LexerToken::UnexpectedEnd => {
+                    return Err(ParseErrorInner::LexerError.range(token.0));
+                }
                 LexerToken::Word("if") => self.parse_if(options, tokens)?,
                 LexerToken::Word("else") => todo!(),
                 LexerToken::SingleQuote => todo!(),
@@ -165,13 +184,7 @@ impl<'a> State<'a> {
         tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<Block, ParseError> {
         let tkn = tokens.next();
-        debug_assert_matches!(
-            tkn,
-            Some(LexerItem {
-                token: LexerToken::LeftCurlyBracket,
-                range: _
-            })
-        );
+        debug_assert_matches!(tkn, Some((_, LexerToken::LeftCurlyBracket)));
         let len = self.variables.len();
         let fun_len = self.funs.len();
         let block = self.parse_block(options, tokens)?;
@@ -185,34 +198,28 @@ impl<'a> State<'a> {
         tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<BlockToken, ParseError> {
         let tkn = tokens.next();
-        debug_assert_matches!(
-            tkn,
-            Some(LexerItem {
-                token: LexerToken::Word("fn"),
-                range: _
-            })
-        );
-        let Some(LexerToken::Word(fn_name)) = tokens.next().map(|t| t.token) else {
-            return Err(ParseError::ExpectedFnName);
+        debug_assert_matches!(tkn, Some((_, LexerToken::Word("fn"))));
+        let Some((_, LexerToken::Word(fn_name))) = tokens.next() else {
+            return Err(ParseErrorInner::ExpectedFnName.range(0..0));
         };
-        let Some(LexerToken::LeftParenthesis) = tokens.next().map(|t| t.token) else {
-            return Err(ParseError::UnexpectedToken);
+        let Some((_, LexerToken::LeftParenthesis)) = tokens.next() else {
+            return Err(ParseErrorInner::UnexpectedToken.range(0..0));
         };
         let mut vars: u32 = 0;
-        while let Some(LexerToken::Word(var)) = tokens
-            .next_if(|t| matches!(t.token, LexerToken::Word(_)))
-            .map(|t| t.token)
+        while let Some((_, LexerToken::Word(var))) =
+            tokens.next_if(|(_, t)| matches!(t, LexerToken::Word(_)))
         {
             vars += 1;
             self.variables.push(var);
-            match tokens.next().map(|t| t.token) {
-                Some(LexerToken::Comma) => {}
-                Some(LexerToken::RightParenthesis) => break,
-                _ => return Err(ParseError::UnexpectedToken),
+            match tokens.next() {
+                Some((_, LexerToken::Comma)) => {}
+                Some((_, LexerToken::RightParenthesis)) => break,
+                Some((r, _)) => return Err(ParseErrorInner::UnexpectedToken.range(r)),
+                None => return Err(ParseErrorInner::MissingInput.range(0..0)),
             }
         }
-        let block = self.parse_block_inner(options, tokens)?;
         self.funs.push((fn_name, vars));
+        let block = self.parse_block_inner(options, tokens)?;
         self.variables
             .drain(self.variables.len() - vars.strict_cast::<usize>()..);
         Ok(BlockToken::Function(vars, block))
@@ -223,25 +230,19 @@ impl<'a> State<'a> {
         tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<BlockToken, ParseError> {
         let tkn = tokens.next();
-        debug_assert_matches!(
-            tkn,
-            Some(LexerItem {
-                token: LexerToken::Word("if"),
-                range: _
-            })
-        );
+        debug_assert_matches!(tkn, Some((_, LexerToken::Word("if"))));
         let BlockToken::PrintExpression(expr) = self.parse_expression(options, tokens)? else {
-            return Err(ParseError::IfExpectedExpression);
+            return Err(ParseErrorInner::IfExpectedExpression.range(0..0));
         };
         let block = self.parse_block_inner(options, tokens)?;
         let ifelse = if tokens
             .peek()
-            .is_some_and(|t| t.token == LexerToken::Word("else"))
+            .is_some_and(|&(_, t)| t == LexerToken::Word("else"))
         {
             tokens.next();
             if tokens
                 .peek()
-                .is_some_and(|t| t.token == LexerToken::Word("if"))
+                .is_some_and(|&(_, t)| t == LexerToken::Word("if"))
             {
                 let ifelse = self.parse_if(options, tokens)?;
                 Some(Block {
@@ -261,16 +262,10 @@ impl<'a> State<'a> {
         tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<BlockToken, ParseError> {
         let tkn = tokens.next();
-        debug_assert_matches!(
-            tkn,
-            Some(LexerItem {
-                token: LexerToken::Word("let"),
-                range: _
-            })
-        );
+        debug_assert_matches!(tkn, Some((_, LexerToken::Word("let"))));
         let var_name = get_let_mut_vars(options, tokens)?;
-        if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
-            return Err(ParseError::UnexpectedToken);
+        if tokens.next().is_none_or(|(_, t)| t != LexerToken::Equal) {
+            return Err(ParseErrorInner::UnexpectedToken.range(0..0));
         }
         let expr = self.parse_expression(options, tokens)?;
         self.variables.push(var_name);
@@ -286,22 +281,16 @@ impl<'a> State<'a> {
         tokens: &mut PeekNth<LexerIter<'a>>,
     ) -> Result<BlockToken, ParseError> {
         let tkn = tokens.next();
-        debug_assert_matches!(
-            tkn,
-            Some(LexerItem {
-                token: LexerToken::Word("mut"),
-                range: _
-            })
-        );
+        debug_assert_matches!(tkn, Some((_, LexerToken::Word("mut"))));
         let var_name = get_let_mut_vars(options, tokens)?;
         let pos = self
             .variables
             .iter()
             .rposition(|s| *s == var_name)
-            .ok_or(ParseError::NoVarNamed)?
+            .ok_or(ParseErrorInner::NoVarNamed.range(0..0))?
             .strict_cast();
-        if tokens.next().is_none_or(|t| t.token != LexerToken::Equal) {
-            return Err(ParseError::UnexpectedToken);
+        if tokens.next().is_none_or(|(_, t)| t != LexerToken::Equal) {
+            return Err(ParseErrorInner::UnexpectedToken.range(0..0));
         }
         let expr = self.parse_expression(options, tokens)?;
         Ok(match expr {
@@ -314,6 +303,10 @@ impl<'a> State<'a> {
         self.input_left = operator.is_unary() && !operator.unary_left();
         if matches!(operator, OperatorToken::LeftBracket(_)) {
             self.fn_inputs.push(0);
+            self.operator_stack.push(operator);
+            return;
+        }
+        if matches!(operator, OperatorToken::Function(_)) {
             self.operator_stack.push(operator);
             return;
         }
@@ -446,9 +439,9 @@ impl<'a> State<'a> {
                     if !fun.input_range(custom_input_range(self)).contains(&inputs) {
                         return Err(
                             if fun.input_range(custom_input_range(self)).start < inputs {
-                                ParseError::MissingInput
+                                ParseErrorInner::MissingInput.range(0..0)
                             } else {
-                                ParseError::TooMuchInput
+                                ParseErrorInner::TooMuchInput.range(0..0)
                             },
                         );
                     }
@@ -483,20 +476,20 @@ impl<'a> State<'a> {
         let mut print = true;
         loop {
             if self.input_left
-                && tokens.peek().is_some_and(|tkn| {
+                && tokens.peek().is_some_and(|(_, tkn)| {
                     matches!(
-                        tkn.token,
+                        tkn,
                         LexerToken::LeftCurlyBracket | LexerToken::RightCurlyBracket
                     )
                 })
             {
                 break;
             }
-            let Some(token) = tokens.next() else {
+            let Some((range, token)) = tokens.next() else {
                 break;
             };
-            match token.token {
-                LexerToken::UnexpectedEnd => return Err(ParseError::LexerError),
+            match token {
+                LexerToken::UnexpectedEnd => return Err(ParseErrorInner::LexerError.range(range)),
                 LexerToken::BackSlash if tokens.next_if_eq(&LexerToken::NewLine).is_some() => {}
                 LexerToken::LeftParenthesis => {
                     self.push_operator(OperatorToken::LeftBracket(Bracket::Parenthesis));
@@ -546,7 +539,7 @@ impl<'a> State<'a> {
                 t if let Some(op) = OperatorToken::parse(self, t, tokens) => {
                     self.push_operator(op);
                 }
-                _ => return Err(ParseError::UnexpectedToken),
+                _ => return Err(ParseErrorInner::UnexpectedToken.range(range)),
             }
         }
         self.end()?;
@@ -602,7 +595,7 @@ impl<'a> FormatStr<'a> {
                             FormatOptions::new(&str[left + 1..i]),
                         ));
                     } else {
-                        return Err(ParseError::BadFormat);
+                        return Err(ParseErrorInner::BadFormat.range(0..0));
                     }
                     is_left = None;
                 }
