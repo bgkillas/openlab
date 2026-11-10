@@ -33,7 +33,7 @@ pub struct Block {
 #[derive(PartialEq, Clone, Debug)]
 pub enum BlockToken {
     Block(Block),
-    Function(u32, Block),
+    Function(u32, u32, Block),
     Expression(Expression),
     LetAssignment(Expression),
     Assignment(u32, Expression),
@@ -218,11 +218,12 @@ impl<'a> State<'a> {
                 None => return Err(ParseErrorInner::MissingInput.range(0..0)),
             }
         }
+        let fn_var = self.funs.len().strict_cast();
         self.funs.push((fn_name, vars));
         let block = self.parse_block_inner(options, tokens)?;
         self.variables
             .drain(self.variables.len() - vars.strict_cast::<usize>()..);
-        Ok(BlockToken::Function(vars, block))
+        Ok(BlockToken::Function(fn_var, vars, block))
     }
     fn parse_if(
         &mut self,

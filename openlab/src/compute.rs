@@ -83,8 +83,8 @@ impl<'a, S: Write> Compute<'a, S> {
                         res?;
                     }
                 }
-                BlockToken::Function(vars, inner) => {
-                    self.let_fun(*vars, inner);
+                BlockToken::Function(fn_var, vars, inner) => {
+                    self.let_fun(*fn_var, *vars, inner);
                 }
                 BlockToken::Assignment(var, expr) => {
                     let number = self.expr(expr)?;
@@ -152,8 +152,10 @@ impl<'a, S: Write> Compute<'a, S> {
         }
         ReturnType::None
     }
-    fn let_fun(&mut self, vars: u32, block: &'a Block) {
-        self.funs.push((vars, block));
+    fn let_fun(&mut self, fn_var: u32, vars: u32, block: &'a Block) {
+        if fn_var == self.funs.len().strict_cast::<u32>() {
+            self.funs.push((vars, block));
+        }
     }
     fn let_var(&mut self, number: Number) {
         self.stack.push(number);
