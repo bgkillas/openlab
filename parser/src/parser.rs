@@ -8,6 +8,8 @@ use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
+use number::float::real::Real;
+use number::matrix::dense::Matrix;
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
 use std::debug_assert_matches;
@@ -25,6 +27,14 @@ pub enum ExpressionToken {
     Number(Number),
     Variable(u32),
     Function(Function),
+}
+pub enum Type {
+    Real(Real<Float>),
+    Complex(Complex<Float>),
+    Matrix(Matrix<Complex<Float>>),
+    Bool(bool),
+    Function(u32),
+    Integer(i128),
 }
 #[derive(PartialEq, Clone, Default, Debug)]
 pub struct Block {
