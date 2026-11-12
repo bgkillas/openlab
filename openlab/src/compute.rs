@@ -268,20 +268,40 @@ impl<'a, S: Write> Compute<'a, S> {
                 Operator::Factorial => todo!(),
                 Operator::SubFactorial => todo!(),
                 Operator::Mod => todo!(),
-                Operator::Less => todo!(),
-                Operator::LessEq => todo!(),
-                Operator::Greater => todo!(),
-                Operator::GreaterEq => todo!(),
-                Operator::Eq => Some(Number::Complex(if next() == next() {
-                    NumberInner::one()
-                } else {
-                    NumberInner::zero()
-                })),
-                Operator::NotEq => Some(Number::Complex(if next() == next() {
-                    NumberInner::zero()
-                } else {
-                    NumberInner::one()
-                })),
+                Operator::Less
+                | Operator::LessEq
+                | Operator::Greater
+                | Operator::GreaterEq
+                | Operator::Eq
+                | Operator::NotEq => Some(Number::Complex(
+                    if match o {
+                        Operator::Eq => next() == next(),
+                        Operator::NotEq => next() != next(),
+                        Operator::Less
+                        | Operator::LessEq
+                        | Operator::Greater
+                        | Operator::GreaterEq
+                            if let Some(a) = next().complex()
+                                && let Some(b) = next().complex()
+                                && a.number.im.is_zero()
+                                && b.number.im.is_zero()
+                                && a.units == b.units =>
+                        {
+                            match o {
+                                Operator::Less => a.number.re < b.number.re,
+                                Operator::LessEq => a.number.re <= b.number.re,
+                                Operator::Greater => a.number.re > b.number.re,
+                                Operator::GreaterEq => a.number.re >= b.number.re,
+                                _ => unreachable!(),
+                            }
+                        }
+                        _ => unreachable!(),
+                    } {
+                        NumberInner::one()
+                    } else {
+                        NumberInner::zero()
+                    },
+                )),
                 Operator::And => todo!(),
                 Operator::Or => todo!(),
             },

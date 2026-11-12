@@ -6,6 +6,7 @@ use crate::traits::not::NotType;
 use crate::traits::number::NumberImpl;
 use crate::traits::real::RealImpl;
 use crate::{assign_each, assign_neg};
+use core::cmp::Ordering;
 use core::fmt::{Debug, Formatter};
 use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, Neg, Sub};
@@ -17,6 +18,11 @@ pub struct Real<T: RealImpl = f64>(pub T);
 impl<T: RealImpl> Debug for Real<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         Debug::fmt(&self.0, f)
+    }
+}
+impl<T: RealImpl> PartialOrd for Real<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
     }
 }
 macro_rules! define_float {

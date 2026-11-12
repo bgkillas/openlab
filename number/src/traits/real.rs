@@ -1,6 +1,6 @@
 use crate::traits::base::BaseImpl;
 use crate::traits::complex::ComplexImpl;
-pub trait RealImpl: BaseImpl + From<u8> + From<f32> {
+pub trait RealImpl: BaseImpl + PartialOrd + From<u8> + From<f32> {
     type Complex: ComplexImpl;
     #[must_use]
     fn sqrt(self) -> Self;
