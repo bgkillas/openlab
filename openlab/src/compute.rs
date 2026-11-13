@@ -1,20 +1,20 @@
 use core::iter;
 use core::mem;
-use core::ops::{Add, Div, Mul, Sub};
 use core::ops::{ControlFlow, FromResidual, Residual, Try};
 use parser::functions::Function;
-use parser::number::float::real::Real;
 use parser::number::matrix::dense::Matrix;
 use parser::number::matrix::size::MatrixDimension;
-use parser::number::traits::number::NumberImpl as _;
-use parser::number::traits::pow::{Pow, Root};
-use parser::operators::Operator;
-use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number, NumberInner};
+//use core::ops::{Add, Div, Mul, Sub};
+//use parser::number::traits::number::NumberImpl as _;
+//use parser::number::traits::pow::{Pow, Root};
+//use parser::operators::Operator;
+use parser::parser::{Block, BlockToken, Expression, ExpressionToken};
+use parser::types::Type;
 use std::io::{Stdout, Write, stdout};
 #[derive(Debug, Default)]
 pub struct Compute<'a, S: Write> {
     stack_start: usize,
-    stack: Vec<Number>,
+    stack: Vec<Type>,
     funs: Vec<(u32, &'a Block)>,
     stdout: S,
 }
@@ -29,7 +29,7 @@ impl Compute<'_, Stdout> {
     }
 }
 impl<'a> Compute<'a, Vec<u8>> {
-    pub fn compute_str(&mut self, block: &'a Block) -> (Option<Number>, String) {
+    pub fn compute_str(&mut self, block: &'a Block) -> (Option<Type>, String) {
         let ret = self.compute(block);
         (ret, String::from_utf8(mem::take(&mut self.stdout)).unwrap())
     }
@@ -40,7 +40,7 @@ macro_rules! write_stdout {
     };
 }
 impl<'a, S: Write> Compute<'a, S> {
-    pub fn compute(&mut self, block: &'a Block) -> Option<Number> {
+    pub fn compute(&mut self, block: &'a Block) -> Option<Type> {
         let old = self.stack.len();
         let ret = self.block(block);
         debug_assert_eq!(self.stack.len(), old);
@@ -54,7 +54,7 @@ impl<'a, S: Write> Compute<'a, S> {
             stdout,
         }
     }
-    pub fn block(&mut self, block: &'a Block) -> ReturnType<Number> {
+    pub fn block(&mut self, block: &'a Block) -> ReturnType<Type> {
         let len = self.stack.len();
         let fun_len = self.funs.len();
         let ret = self.block_inner(block);
@@ -62,7 +62,7 @@ impl<'a, S: Write> Compute<'a, S> {
         self.funs.drain(fun_len..);
         ret
     }
-    fn block_inner(&mut self, block: &'a Block) -> ReturnType<Number> {
+    fn block_inner(&mut self, block: &'a Block) -> ReturnType<Type> {
         for (i, block_token) in block.blocks.iter().enumerate() {
             match block_token {
                 BlockToken::Expression(expr) => {
@@ -124,12 +124,8 @@ impl<'a, S: Write> Compute<'a, S> {
                 }
                 BlockToken::If(expr, then, ifelse) => {
                     let number = self.expr(expr)?;
-                    if let Some(complex) = number.complex()
-                        && complex.units.is_zero()
-                        && complex.number.im.is_zero()
-                        && matches!(complex.number.re, Real(0.0 | 1.0))
-                    {
-                        if let Some(res) = if complex.number.re == Real(1.0) {
+                    if let Some(b) = number.bool() {
+                        if let Some(res) = if b {
                             Some(self.block(then))
                         } else {
                             ifelse.as_ref().map(|inner| self.block(inner))
@@ -157,17 +153,17 @@ impl<'a, S: Write> Compute<'a, S> {
             self.funs.push((vars, block));
         }
     }
-    fn let_var(&mut self, number: Number) {
+    fn let_var(&mut self, number: Type) {
         self.stack.push(number);
     }
-    fn mut_var(&mut self, var: u32, number: Number) {
+    fn mut_var(&mut self, var: u32, number: Type) {
         self.stack[var.strict_cast::<usize>()] = number;
     }
-    fn expr(&mut self, expr: &'a Expression) -> ReturnType<Number> {
+    fn expr(&mut self, expr: &'a Expression) -> ReturnType<Type> {
         let len = self.stack.len();
         for token in &expr.tokens {
             let number = match token {
-                ExpressionToken::Number(num) => num.clone(),
+                ExpressionToken::Type(num) => num.clone(),
                 &ExpressionToken::Function(fun) => {
                     self.fun(fun).map_or_default(ReturnType::Last)?
                 }
@@ -182,7 +178,7 @@ impl<'a, S: Write> Compute<'a, S> {
         debug_assert_eq!(self.stack.len(), len);
         res.map_or_default(ReturnType::Last)
     }
-    fn custom_fun(&mut self, fun: u32) -> Option<Number> {
+    fn custom_fun(&mut self, fun: u32) -> Option<Type> {
         let (count, block) = self.funs[fun.strict_cast::<usize>()];
         let last = self.stack_start;
         self.stack_start = self.stack.len() - count.strict_cast::<usize>();
@@ -192,7 +188,7 @@ impl<'a, S: Write> Compute<'a, S> {
         self.stack_start = last;
         Some(ret)
     }
-    fn fun(&mut self, fun: Function) -> Option<Number> {
+    fn fun(&mut self, fun: Function) -> Option<Type> {
         if let Function::Custom(cfun) = fun {
             return self.custom_fun(cfun);
         }
@@ -206,45 +202,46 @@ impl<'a, S: Write> Compute<'a, S> {
         match fun {
             Function::Vector(i) => {
                 if i == 0 {
-                    Some(Number::Matrix(Matrix::default()))
+                    Some(Type::Matrix(Matrix::default()))
                 } else {
                     let first = next();
                     let mat = match first {
-                        Number::Complex(c) => {
+                        Type::Number(c) => {
                             let dim = MatrixDimension::new(i, 1);
-                            let mut new_iter = iter::once(Number::Complex(c)).chain(inputs);
-                            Matrix::new_with_try(dim, |_, _| new_iter.next()?.complex())?
+                            let mut new_iter = iter::once(Type::Number(c)).chain(inputs);
+                            Matrix::new_with_try(dim, |_, _| new_iter.next()?.number())?
                         }
-                        Number::Matrix(m) if m.dimension.height == 1 => {
+                        Type::Matrix(m) if m.dimension.height == 1 => {
                             let dim = MatrixDimension::new(m.dimension.width, i);
-                            let mut new_iter = iter::once(Number::Matrix(m)).chain(inputs);
-                            Matrix::from_rows_try(dim, |_, _| new_iter.next()?.matrix_owned())?
+                            let mut new_iter = iter::once(Type::Matrix(m)).chain(inputs);
+                            Matrix::from_rows_try(dim, |_, _| new_iter.next()?.matrix())?
                         }
-                        Number::Matrix(m) if m.dimension.width == 1 => {
+                        Type::Matrix(m) if m.dimension.width == 1 => {
                             let dim = MatrixDimension::new(i, m.dimension.height);
-                            let mut new_iter = iter::once(Number::Matrix(m)).chain(inputs);
-                            Matrix::from_cols_try(dim, |_, _| new_iter.next()?.matrix_owned())?
+                            let mut new_iter = iter::once(Type::Matrix(m)).chain(inputs);
+                            Matrix::from_cols_try(dim, |_, _| new_iter.next()?.matrix())?
                         }
-                        Number::Matrix(_) | Number::List(_) => return None,
+                        //TODO
+                        _ => return None,
                     };
-                    Some(Number::Matrix(mat))
+                    Some(Type::Matrix(mat))
                 }
             }
             Function::List(i) => {
                 if i == 0 {
-                    Some(Number::List(Vec::new()))
+                    Some(Type::List(Vec::new()))
                 } else {
                     let vec = iter::repeat_with(next).take(i.strict_cast()).collect();
-                    Some(Number::List(vec))
+                    Some(Type::List(vec))
                 }
             }
             Function::Matrix(i, j) => {
                 if i == 0 || j == 0 {
-                    Some(Number::Matrix(Matrix::default()))
+                    Some(Type::Matrix(Matrix::default()))
                 } else {
                     let dim = MatrixDimension::new(i, j);
-                    let mat = Matrix::new_with_try(dim, |_, _| inputs.next()?.complex())?;
-                    Some(Number::Matrix(mat))
+                    let mat = Matrix::new_with_try(dim, |_, _| inputs.next()?.number())?;
+                    Some(Type::Matrix(mat))
                 }
             }
             Function::AssertEq => {
@@ -255,7 +252,7 @@ impl<'a, S: Write> Compute<'a, S> {
                 }
                 None
             }
-            Function::Operator(o) => match o {
+            /*Function::Operator(o) => match o {
                 Operator::Add => next() + next(),
                 Operator::Sub => next() - next(),
                 Operator::Mul | Operator::MulInner => next() * next(),
@@ -273,35 +270,26 @@ impl<'a, S: Write> Compute<'a, S> {
                 | Operator::Greater
                 | Operator::GreaterEq
                 | Operator::Eq
-                | Operator::NotEq => Some(Number::Complex(
-                    if match o {
-                        Operator::Eq => next() == next(),
-                        Operator::NotEq => next() != next(),
-                        Operator::Less
-                        | Operator::LessEq
-                        | Operator::Greater
-                        | Operator::GreaterEq
-                            if let Some(a) = next().complex()
-                                && let Some(b) = next().complex()
-                                && a.number.im.is_zero()
-                                && b.number.im.is_zero()
-                                && a.units == b.units =>
-                        {
-                            match o {
-                                Operator::Less => a.number.re < b.number.re,
-                                Operator::LessEq => a.number.re <= b.number.re,
-                                Operator::Greater => a.number.re > b.number.re,
-                                Operator::GreaterEq => a.number.re >= b.number.re,
-                                _ => unreachable!(),
-                            }
+                | Operator::NotEq => Some(Type::Bool(match o {
+                    Operator::Eq => next() == next(),
+                    Operator::NotEq => next() != next(),
+                    Operator::Less | Operator::LessEq | Operator::Greater | Operator::GreaterEq
+                        if let Some(a) = next().number()
+                            && let Some(b) = next().number()
+                            && a.number.im.is_zero()
+                            && b.number.im.is_zero()
+                            && a.units == b.units =>
+                    {
+                        match o {
+                            Operator::Less => a.number.re < b.number.re,
+                            Operator::LessEq => a.number.re <= b.number.re,
+                            Operator::Greater => a.number.re > b.number.re,
+                            Operator::GreaterEq => a.number.re >= b.number.re,
+                            _ => unreachable!(),
                         }
-                        _ => unreachable!(),
-                    } {
-                        NumberInner::one()
-                    } else {
-                        NumberInner::zero()
-                    },
-                )),
+                    }
+                    _ => unreachable!(),
+                })),
                 Operator::And => todo!(),
                 Operator::Or => todo!(),
             },
@@ -325,7 +313,7 @@ impl<'a, S: Write> Compute<'a, S> {
                 Operator::Or => todo!(),
                 Operator::Negate => Some(-next()),
                 Operator::Identity | Operator::Transpose => Some(next()),
-            },
+            },*/
             _ => todo!(),
         }
     }

@@ -11,6 +11,7 @@ pub mod functions;
 pub mod operators;
 pub mod options;
 pub mod parser;
+pub mod types;
 pub mod units;
 #[cfg(test)]
 mod units_test;

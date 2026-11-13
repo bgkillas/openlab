@@ -1,6 +1,7 @@
 use crate::functions::Function;
 use crate::operators::{Bracket, Operator, OperatorToken};
 use crate::options::ParserOptions;
+use crate::types::Type;
 use crate::units::{Dimension, UNIT_COUNT, UnitType};
 use core::range::Range;
 use core::str::FromStr as _;
@@ -8,15 +9,12 @@ use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
-use number::float::real::Real;
-use number::matrix::dense::Matrix;
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
 use std::debug_assert_matches;
 pub type Float = f64;
 pub type NumberBase = Complex<Float>;
-pub type NumberInner = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
-pub type Number = number::number::Number<NumberInner>;
+pub type Number = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
 #[derive(PartialEq, Clone, Default, Debug)]
 pub struct Expression {
     pub tokens: Box<[ExpressionToken]>,
@@ -24,17 +22,9 @@ pub struct Expression {
 #[derive(PartialEq, Clone, Debug)]
 pub enum ExpressionToken {
     Block(Block),
-    Number(Number),
+    Type(Type),
     Variable(u32),
     Function(Function),
-}
-pub enum Type {
-    Real(Real<Float>),
-    Complex(Complex<Float>),
-    Matrix(Matrix<Complex<Float>>),
-    Bool(bool),
-    Function(u32),
-    Integer(i128),
 }
 #[derive(PartialEq, Clone, Default, Debug)]
 pub struct Block {
@@ -345,13 +335,13 @@ impl<'a> State<'a> {
         self.input_left = true;
         self.expression.push(ExpressionToken::Variable(var));
     }
-    fn push_number(&mut self, number: NumberInner) {
+    fn push_number(&mut self, number: Number) {
         if self.input_left {
             self.push_operator(OperatorToken::Operator(Operator::MulInner));
         }
         self.input_left = true;
         self.expression
-            .push(ExpressionToken::Number(Number::Complex(number)));
+            .push(ExpressionToken::Type(Type::Number(number)));
     }
     fn end(&mut self) -> Result<(), ParseError> {
         while let Some(operator) = self.operator_stack.pop() {
@@ -394,7 +384,7 @@ impl<'a> State<'a> {
         for (i, token) in iter.enumerate() {
             match token {
                 ExpressionToken::Block(_)
-                | ExpressionToken::Number(_)
+                | ExpressionToken::Type(_)
                 | ExpressionToken::Variable(_) => {
                     inner_inputs -= 1;
                 }
@@ -511,8 +501,7 @@ impl<'a> State<'a> {
                 }
                 LexerToken::RightSquareBracket => self.close_off_bracket(Bracket::Square)?,
                 LexerToken::Numeric(base, whole, part) => {
-                    let number =
-                        NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
+                    let number = Number::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
                     self.push_number(number);
                 }
                 LexerToken::NewLine => {

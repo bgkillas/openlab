@@ -81,10 +81,10 @@ fn units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Number {
     Number::Complex(Dimension::number_inner(options, prefix, unit).unwrap())
 }
 fn expr_number(f: f64) -> ExpressionToken {
-    ExpressionToken::Number(number(f))
+    ExpressionToken::Type(number(f))
 }
 fn expr_units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> ExpressionToken {
-    ExpressionToken::Number(units(options, prefix, unit))
+    ExpressionToken::Type(units(options, prefix, unit))
 }
 fn expr_fun(f: Function) -> ExpressionToken {
     ExpressionToken::Function(f)
