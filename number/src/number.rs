@@ -111,14 +111,14 @@ impl<C: NumberImpl> Number<C> {
             None
         }
     }
-    pub fn matrix(&self) -> Option<&Matrix<C>> {
+    pub fn matrix(self) -> Option<Matrix<C>> {
         if let Self::Matrix(m) = self {
             Some(m)
         } else {
             None
         }
     }
-    pub fn matrix_owned(self) -> Option<Matrix<C>> {
+    pub fn matrix_ref(&self) -> Option<&Matrix<C>> {
         if let Self::Matrix(m) = self {
             Some(m)
         } else {
@@ -162,7 +162,7 @@ impl<C: NumberImpl> Number<C> {
             (NumberDimension::Matrix(ma), NumberDimension::Matrix(mb))
                 if ma.width == mb.width && mb.height == 1 =>
             {
-                let vec = rhs.matrix()?.entries();
+                let vec = rhs.matrix_ref()?.entries();
                 for row in self.matrix_mut()?.rows_mut() {
                     for (a, &b) in row.iter_mut().zip(vec) {
                         *a = f(*a, b)?;
@@ -172,7 +172,7 @@ impl<C: NumberImpl> Number<C> {
             (NumberDimension::Matrix(ma), NumberDimension::Matrix(mb))
                 if ma.height == mb.height && mb.width == 1 =>
             {
-                let vec = rhs.matrix()?.entries();
+                let vec = rhs.matrix_ref()?.entries();
                 for (row, &b) in self.matrix_mut()?.rows_mut().zip(vec) {
                     for a in row.iter_mut() {
                         *a = f(*a, b)?;

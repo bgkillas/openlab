@@ -1,5 +1,5 @@
 use crate::options::ParserOptions;
-use crate::parser::{Float, Number, NumberBase};
+use crate::parser::{Float, NumberBase, NumberInner};
 use core::f64::consts::PI;
 use core::fmt::Debug;
 use jzon::JsonValue;
@@ -850,15 +850,19 @@ impl Dimension {
     pub fn discriminant(self) -> usize {
         unsafe { core::mem::transmute::<Self, u8>(self) }.strict_cast()
     }
-    pub fn parse(options: ParserOptions<'_>, s: &str) -> Option<Number> {
+    pub fn parse(options: ParserOptions<'_>, s: &str) -> Option<NumberInner> {
         let (prefix, unit) = Prefix::parse(s)?;
         Self::number_inner(options, prefix, unit)
     }
-    pub fn number_inner(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Option<Number> {
+    pub fn number_inner(
+        options: ParserOptions<'_>,
+        prefix: Prefix,
+        unit: Unit,
+    ) -> Option<NumberInner> {
         let units = unit.units();
         let mult = unit.get_scaled(options)?;
         let number = NumberBase::new_real(Real(mult * prefix.get(options)?));
-        Some(Number::new(number, units))
+        Some(NumberInner::new(number, units))
     }
 }
 static CURRENCY: Mutex<Option<[Float; variant_count::<CurrencyUnit>()]>> = Mutex::new(None);

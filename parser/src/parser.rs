@@ -9,12 +9,13 @@ use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
+use number::number::Number;
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
 use std::debug_assert_matches;
 pub type Float = f64;
 pub type NumberBase = Complex<Float>;
-pub type Number = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
+pub type NumberInner = NumberUnits<NumberBase, UnitType, UNIT_COUNT>;
 #[derive(PartialEq, Clone, Default, Debug)]
 pub struct Expression {
     pub tokens: Box<[ExpressionToken]>,
@@ -335,13 +336,15 @@ impl<'a> State<'a> {
         self.input_left = true;
         self.expression.push(ExpressionToken::Variable(var));
     }
-    fn push_number(&mut self, number: Number) {
+    fn push_number(&mut self, number: NumberInner) {
+        self.push_type(Type::Number(Number::Complex(number)));
+    }
+    fn push_type(&mut self, ty: Type) {
         if self.input_left {
             self.push_operator(OperatorToken::Operator(Operator::MulInner));
         }
         self.input_left = true;
-        self.expression
-            .push(ExpressionToken::Type(Type::Number(number)));
+        self.expression.push(ExpressionToken::Type(ty));
     }
     fn end(&mut self) -> Result<(), ParseError> {
         while let Some(operator) = self.operator_stack.pop() {
@@ -501,7 +504,8 @@ impl<'a> State<'a> {
                 }
                 LexerToken::RightSquareBracket => self.close_off_bracket(Bracket::Square)?,
                 LexerToken::Numeric(base, whole, part) => {
-                    let number = Number::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
+                    let number =
+                        NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
                     self.push_number(number);
                 }
                 LexerToken::NewLine => {
@@ -532,6 +536,12 @@ impl<'a> State<'a> {
                     if let Some(var) = self.variables.iter().rposition(|&s| s == str) =>
                 {
                     self.push_variable(var.strict_cast());
+                }
+                LexerToken::Word("true") => {
+                    self.push_type(Type::Bool(true));
+                }
+                LexerToken::Word("false") => {
+                    self.push_type(Type::Bool(false));
                 }
                 LexerToken::Word(str) if let Some(num) = Dimension::parse(options, str) => {
                     self.push_number(num);
@@ -570,7 +580,7 @@ impl BlockToken {
 impl<'a> FormatStr<'a> {
     pub fn get_string<I>(&self, iter: &mut I) -> String
     where
-        I: Iterator<Item = Number>,
+        I: Iterator<Item = NumberInner>,
     {
         let mut string = String::new();
         let mut start = 0;

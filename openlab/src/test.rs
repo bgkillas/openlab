@@ -3,7 +3,7 @@ use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
 use parser::operators::Operator;
 use parser::options::ParserOptions;
-use parser::parser::{Block, BlockToken, Expression, ExpressionToken, Number};
+use parser::parser::{Block, BlockToken, Expression, ExpressionToken, NumberInner};
 use parser::units::{Dimension, DistanceUnit, MetricPrefix, Prefix, TimeUnit, Unit};
 fn block<const N: usize>(blocks: [BlockToken; N]) -> Block {
     Block {
@@ -74,11 +74,11 @@ fn let_print_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> Blo
         },
     )
 }
-fn number(f: f64) -> Number {
-    Number::Complex(f.into())
+fn number(f: f64) -> NumberInner {
+    NumberInner::Complex(f.into())
 }
-fn units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Number {
-    Number::Complex(Dimension::number_inner(options, prefix, unit).unwrap())
+fn units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> NumberInner {
+    NumberInner::Complex(Dimension::number_inner(options, prefix, unit).unwrap())
 }
 fn expr_number(f: f64) -> ExpressionToken {
     ExpressionToken::Type(number(f))
@@ -92,15 +92,15 @@ fn expr_fun(f: Function) -> ExpressionToken {
 fn expr_op(o: Operator) -> ExpressionToken {
     expr_fun(Function::Operator(o))
 }
-fn mat<const N: usize, const M: usize>(mat: [[f64; N]; M]) -> Number {
-    Number::Matrix(Matrix::from(mat))
+fn mat<const N: usize, const M: usize>(mat: [[f64; N]; M]) -> NumberInner {
+    NumberInner::Matrix(Matrix::from(mat))
 }
 fn assert_block(
     options: ParserOptions<'_>,
     s: &str,
     block: Block,
     stdout: &str,
-    res: Option<Number>,
+    res: Option<NumberInner>,
 ) {
     assert_eq!(block, Block::parse(options, s).unwrap());
     let mut compute = Compute::<Vec<u8>>::default();

@@ -1,10 +1,9 @@
-use crate::parser::Number;
-use number::matrix::dense::Matrix;
+use crate::parser::NumberInner;
 use number::matrix::size::{MatrixDimension, MatrixIndex};
+use number::number::Number;
 #[derive(PartialEq, Clone, Debug)]
 pub enum Type {
-    Number(Number),
-    Matrix(Matrix<Number>),
+    Number(Number<NumberInner>),
     List(Vec<Self>),
     Bool(bool),
     Function(u32),
@@ -36,21 +35,9 @@ pub enum NumberIndex {
     List(usize, Box<Self>),
 }
 impl Type {
-    pub fn number(self) -> Option<Number> {
+    pub fn number(self) -> Option<Number<NumberInner>> {
         match self {
             Self::Number(a) => Some(a),
-            _ => None,
-        }
-    }
-    pub fn matrix(self) -> Option<Matrix<Number>> {
-        match self {
-            Self::Matrix(a) => Some(a),
-            _ => None,
-        }
-    }
-    pub fn list(self) -> Option<Vec<Self>> {
-        match self {
-            Self::List(a) => Some(a),
             _ => None,
         }
     }

@@ -8,6 +8,7 @@ use parser::number::matrix::size::MatrixDimension;
 //use parser::number::traits::number::NumberImpl as _;
 //use parser::number::traits::pow::{Pow, Root};
 //use parser::operators::Operator;
+use parser::number::number::Number;
 use parser::parser::{Block, BlockToken, Expression, ExpressionToken};
 use parser::types::Type;
 use std::io::{Stdout, Write, stdout};
@@ -202,34 +203,37 @@ impl<'a, S: Write> Compute<'a, S> {
         match fun {
             Function::Vector(i) => {
                 if i == 0 {
-                    Some(Type::Matrix(Matrix::default()))
+                    Some(Type::Number(Number::Matrix(Matrix::default())))
                 } else {
                     let first = next();
+                    let number_inputs = inputs.filter_map(|t| match t {
+                        Type::Number(n) => Some(n),
+                        _ => None,
+                    });
                     let mat = match first {
-                        Type::Number(c) => {
+                        Type::Number(Number::Complex(c)) => {
                             let dim = MatrixDimension::new(i, 1);
-                            let mut new_iter = iter::once(Type::Number(c)).chain(inputs);
-                            Matrix::new_with_try(dim, |_, _| new_iter.next()?.number())?
+                            let mut new_iter = iter::once(Number::Complex(c)).chain(number_inputs);
+                            Matrix::new_with_try(dim, |_, _| new_iter.next()?.complex())?
                         }
-                        Type::Matrix(m) if m.dimension.height == 1 => {
+                        Type::Number(Number::Matrix(m)) if m.dimension.height == 1 => {
                             let dim = MatrixDimension::new(m.dimension.width, i);
-                            let mut new_iter = iter::once(Type::Matrix(m)).chain(inputs);
+                            let mut new_iter = iter::once(Number::Matrix(m)).chain(number_inputs);
                             Matrix::from_rows_try(dim, |_, _| new_iter.next()?.matrix())?
                         }
-                        Type::Matrix(m) if m.dimension.width == 1 => {
+                        Type::Number(Number::Matrix(m)) if m.dimension.width == 1 => {
                             let dim = MatrixDimension::new(i, m.dimension.height);
-                            let mut new_iter = iter::once(Type::Matrix(m)).chain(inputs);
+                            let mut new_iter = iter::once(Number::Matrix(m)).chain(number_inputs);
                             Matrix::from_cols_try(dim, |_, _| new_iter.next()?.matrix())?
                         }
-                        //TODO
                         _ => return None,
                     };
-                    Some(Type::Matrix(mat))
+                    Some(Type::Number(Number::Matrix(mat)))
                 }
             }
             Function::List(i) => {
                 if i == 0 {
-                    Some(Type::List(Vec::new()))
+                    Some(Type::Number(Number::List(Vec::new())))
                 } else {
                     let vec = iter::repeat_with(next).take(i.strict_cast()).collect();
                     Some(Type::List(vec))
@@ -237,11 +241,15 @@ impl<'a, S: Write> Compute<'a, S> {
             }
             Function::Matrix(i, j) => {
                 if i == 0 || j == 0 {
-                    Some(Type::Matrix(Matrix::default()))
+                    Some(Type::Number(Number::Matrix(Matrix::default())))
                 } else {
+                    let mut number_inputs = inputs.filter_map(|t| match t {
+                        Type::Number(n) => Some(n),
+                        _ => None,
+                    });
                     let dim = MatrixDimension::new(i, j);
-                    let mat = Matrix::new_with_try(dim, |_, _| inputs.next()?.number())?;
-                    Some(Type::Matrix(mat))
+                    let mat = Matrix::new_with_try(dim, |_, _| number_inputs.next()?.complex())?;
+                    Some(Type::Number(Number::Matrix(mat)))
                 }
             }
             Function::AssertEq => {
