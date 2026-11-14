@@ -503,6 +503,22 @@ impl<'a> State<'a> {
                     self.push_operator(OperatorToken::LeftBracket(Bracket::Square));
                 }
                 LexerToken::RightSquareBracket => self.close_off_bracket(Bracket::Square)?,
+                LexerToken::Numeric(_, _, _)
+                    if tokens
+                        .peek()
+                        .is_some_and(|&(_, t)| t == LexerToken::Word("i64")) =>
+                {
+                    tokens.next();
+                    todo!()
+                }
+                LexerToken::Numeric(_, _, _)
+                    if tokens
+                        .peek()
+                        .is_some_and(|&(_, t)| t == LexerToken::Word("f64")) =>
+                {
+                    tokens.next();
+                    todo!()
+                }
                 LexerToken::Numeric(base, whole, part) => {
                     let number =
                         NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
