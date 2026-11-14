@@ -1,9 +1,13 @@
 use crate::compute::Compute;
 use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
+use parser::number::number::Number;
+use parser::number::traits::number::NumberImpl;
+use parser::number::units::Units;
 use parser::operators::Operator;
 use parser::options::ParserOptions;
-use parser::parser::{Block, BlockToken, Expression, ExpressionToken, NumberInner};
+use parser::parser::{Block, BlockToken, Expression, ExpressionToken, NumberBase, NumberInner};
+use parser::types::Type;
 use parser::units::{Dimension, DistanceUnit, MetricPrefix, Prefix, TimeUnit, Unit};
 fn block<const N: usize>(blocks: [BlockToken; N]) -> Block {
     Block {
@@ -31,8 +35,8 @@ fn ifelse<'a, const N: usize>(p: [ExpressionToken; N], ifthen: Block, ifelse: Bl
         Some(ifelse),
     )
 }
-fn fun(vars: u32, block: Block) -> BlockToken {
-    BlockToken::Function(vars, block)
+fn fun(id: u32, vars: u32, block: Block) -> BlockToken {
+    BlockToken::Function(id, vars, block)
 }
 #[expect(unused)]
 fn ifthen<'a, const N: usize>(p: [ExpressionToken; N], ifthen: Block) -> BlockToken {
@@ -74,17 +78,31 @@ fn let_print_expr<const N: usize>(var: u32, blocks: [ExpressionToken; N]) -> Blo
         },
     )
 }
-fn number(f: f64) -> NumberInner {
-    NumberInner::Complex(f.into())
+fn number(f: f64) -> Type {
+    Type::Number(Number::Complex(NumberInner::from(NumberBase::from(f))))
 }
-fn units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> NumberInner {
-    NumberInner::Complex(Dimension::number_inner(options, prefix, unit).unwrap())
+fn number_units(f: f64, units: Units) -> Type {
+    Type::Number(Number::Complex(NumberInner::new(
+        NumberBase::from(f),
+        units,
+    )))
+}
+fn units_inner(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Units {
+    Dimension::number_inner(options, prefix, unit)
+        .unwrap()
+        .units
+}
+fn units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Number<NumberInner> {
+    Number::Complex(Dimension::number_inner(options, prefix, unit).unwrap())
 }
 fn expr_number(f: f64) -> ExpressionToken {
     ExpressionToken::Type(number(f))
 }
+fn expr_bool(b: bool) -> ExpressionToken {
+    ExpressionToken::Type(Type::Bool(b))
+}
 fn expr_units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> ExpressionToken {
-    ExpressionToken::Type(units(options, prefix, unit))
+    ExpressionToken::Type(Type::Number(units(options, prefix, unit)))
 }
 fn expr_fun(f: Function) -> ExpressionToken {
     ExpressionToken::Function(f)
@@ -92,15 +110,15 @@ fn expr_fun(f: Function) -> ExpressionToken {
 fn expr_op(o: Operator) -> ExpressionToken {
     expr_fun(Function::Operator(o))
 }
-fn mat<const N: usize, const M: usize>(mat: [[f64; N]; M]) -> NumberInner {
-    NumberInner::Matrix(Matrix::from(mat))
+fn mat<const N: usize, const M: usize>(mat: [[f64; N]; M]) -> Type {
+    Type::Number(Number::Matrix(Matrix::from(mat)))
 }
 fn assert_block(
     options: ParserOptions<'_>,
     s: &str,
     block: Block,
     stdout: &str,
-    res: Option<NumberInner>,
+    res: Option<Type>,
 ) {
     assert_eq!(block, Block::parse(options, s).unwrap());
     let mut compute = Compute::<Vec<u8>>::default();
@@ -118,7 +136,7 @@ fn test_assert() {
             expr_number(1.0),
             expr_fun(Function::AssertEq),
         ])]),
-        "Complex(0.0) does not equal Complex(1.0)\n",
+        "Number(Complex(0.0)) does not equal Number(Complex(1.0))\n",
         None,
     )
 }
@@ -178,10 +196,17 @@ fn parse_units() {
             expr_op(Operator::Div),
         ])]),
         "",
-        Some(
-            (number(2.0 / 1000.0) / units(options, Prefix::None, Unit::TimeUnit(TimeUnit::Second)))
+        //TODO should be s^-1
+        Some(number_units(
+            2.0 / 1000.0,
+            Units::default()
+                .div(units_inner(
+                    options,
+                    Prefix::None,
+                    Unit::TimeUnit(TimeUnit::Second),
+                ))
                 .unwrap(),
-        ),
+        )),
     )
 }
 #[test]
@@ -309,15 +334,15 @@ fn test_if() {
     let options = ParserOptions::new(None);
     assert_block(
         options,
-        "if 0 {1} else if 0 {2} else if 1 {3} else {4}",
+        "if false {1} else if false {2} else if true {3} else {4}",
         block([ifelse(
-            [expr_number(0.0)],
+            [expr_bool(false)],
             block([print_expr([expr_number(1.0)])]),
             block([ifelse(
-                [expr_number(0.0)],
+                [expr_bool(false)],
                 block([print_expr([expr_number(2.0)])]),
                 block([ifelse(
-                    [expr_number(1.0)],
+                    [expr_bool(true)],
                     block([print_expr([expr_number(3.0)])]),
                     block([print_expr([expr_number(4.0)])]),
                 )]),
@@ -336,6 +361,7 @@ fn test_fn() {
         foo(1,2,3)",
         block([
             fun(
+                0,
                 3,
                 block([print_expr([
                     var(0),
@@ -365,6 +391,7 @@ fn test_fib() {
         fib(5)",
         block([
             fun(
+                0,
                 1,
                 block([ifelse(
                     [var(0), expr_number(1.0), expr_op(Operator::Eq)],

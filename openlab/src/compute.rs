@@ -1,14 +1,14 @@
 use core::iter;
 use core::mem;
+use core::ops::{Add, Div, Mul, Sub};
 use core::ops::{ControlFlow, FromResidual, Residual, Try};
 use parser::functions::Function;
 use parser::number::matrix::dense::Matrix;
 use parser::number::matrix::size::MatrixDimension;
-//use core::ops::{Add, Div, Mul, Sub};
-//use parser::number::traits::number::NumberImpl as _;
-//use parser::number::traits::pow::{Pow, Root};
-//use parser::operators::Operator;
 use parser::number::number::Number;
+use parser::number::traits::number::NumberImpl as _;
+use parser::number::traits::pow::{Pow, Root};
+use parser::operators::Operator;
 use parser::parser::{Block, BlockToken, Expression, ExpressionToken};
 use parser::types::Type;
 use std::io::{Stdout, Write, stdout};
@@ -199,13 +199,22 @@ impl<'a, S: Write> Compute<'a, S> {
         let mut inputs = self
             .stack
             .drain(self.stack.len().checked_sub(input_count)?..);
-        let mut next = || inputs.next().unwrap();
+        macro_rules! next {
+            () => {
+                inputs.next()?
+            };
+        }
+        macro_rules! next_number {
+            () => {
+                inputs.next()?.number()?
+            };
+        }
         match fun {
             Function::Vector(i) => {
                 if i == 0 {
                     Some(Type::Number(Number::Matrix(Matrix::default())))
                 } else {
-                    let first = next();
+                    let first = next!();
                     let number_inputs = inputs.filter_map(|t| match t {
                         Type::Number(n) => Some(n),
                         _ => None,
@@ -235,7 +244,7 @@ impl<'a, S: Write> Compute<'a, S> {
                 if i == 0 {
                     Some(Type::Number(Number::List(Vec::new())))
                 } else {
-                    let vec = iter::repeat_with(next).take(i.strict_cast()).collect();
+                    let vec = inputs.collect();
                     Some(Type::List(vec))
                 }
             }
@@ -253,23 +262,25 @@ impl<'a, S: Write> Compute<'a, S> {
                 }
             }
             Function::AssertEq => {
-                let a = next();
-                let b = next();
+                let a = next!();
+                let b = next!();
                 if a != b {
                     write_stdout!(self, "{a:?} does not equal {b:?}\n");
                 }
                 None
             }
-            /*Function::Operator(o) => match o {
-                Operator::Add => next() + next(),
-                Operator::Sub => next() - next(),
-                Operator::Mul | Operator::MulInner => next() * next(),
-                Operator::Div => next() / next(),
-                Operator::Pow => next().pow(&next()),
-                Operator::Root => next().root(&next()),
-                Operator::Identity => Some(next()),
-                Operator::Negate => Some(-next()),
-                Operator::Transpose => next().transpose(),
+            Function::Operator(o) => match o {
+                Operator::Add => (next_number!() + next_number!()).map(Type::Number),
+                Operator::Sub => (next_number!() - next_number!()).map(Type::Number),
+                Operator::Mul | Operator::MulInner => {
+                    (next_number!() * next_number!()).map(Type::Number)
+                }
+                Operator::Div => (next_number!() / next_number!()).map(Type::Number),
+                Operator::Pow => next_number!().pow(&next_number!()).map(Type::Number),
+                Operator::Root => next_number!().root(&next_number!()).map(Type::Number),
+                Operator::Identity => Some(Type::Number(next_number!())),
+                Operator::Negate => Some(Type::Number(-next_number!())),
+                Operator::Transpose => next_number!().transpose().map(Type::Number),
                 Operator::Factorial => todo!(),
                 Operator::SubFactorial => todo!(),
                 Operator::Mod => todo!(),
@@ -279,11 +290,11 @@ impl<'a, S: Write> Compute<'a, S> {
                 | Operator::GreaterEq
                 | Operator::Eq
                 | Operator::NotEq => Some(Type::Bool(match o {
-                    Operator::Eq => next() == next(),
-                    Operator::NotEq => next() != next(),
+                    Operator::Eq => next_number!() == next_number!(),
+                    Operator::NotEq => next_number!() != next_number!(),
                     Operator::Less | Operator::LessEq | Operator::Greater | Operator::GreaterEq
-                        if let Some(a) = next().number()
-                            && let Some(b) = next().number()
+                        if let Some(a) = next_number!().complex()
+                            && let Some(b) = next_number!().complex()
                             && a.number.im.is_zero()
                             && b.number.im.is_zero()
                             && a.units == b.units =>
@@ -302,12 +313,24 @@ impl<'a, S: Write> Compute<'a, S> {
                 Operator::Or => todo!(),
             },
             Function::ComponentWise(o) => match o {
-                Operator::Add => next().component_wise(&next(), Add::add),
-                Operator::Sub => next().component_wise(&next(), Sub::sub),
-                Operator::Mul | Operator::MulInner => next().component_wise(&next(), Mul::mul),
-                Operator::Div => next().component_wise(&next(), Div::div),
-                Operator::Pow => next().component_wise(&next(), Pow::pow),
-                Operator::Root => next().component_wise(&next(), Root::root),
+                Operator::Add => next_number!()
+                    .component_wise(&next_number!(), Add::add)
+                    .map(Type::Number),
+                Operator::Sub => next_number!()
+                    .component_wise(&next_number!(), Sub::sub)
+                    .map(Type::Number),
+                Operator::Mul | Operator::MulInner => next_number!()
+                    .component_wise(&next_number!(), Mul::mul)
+                    .map(Type::Number),
+                Operator::Div => next_number!()
+                    .component_wise(&next_number!(), Div::div)
+                    .map(Type::Number),
+                Operator::Pow => next_number!()
+                    .component_wise(&next_number!(), Pow::pow)
+                    .map(Type::Number),
+                Operator::Root => next_number!()
+                    .component_wise(&next_number!(), Root::root)
+                    .map(Type::Number),
                 Operator::Factorial => todo!(),
                 Operator::SubFactorial => todo!(),
                 Operator::Mod => todo!(),
@@ -319,9 +342,9 @@ impl<'a, S: Write> Compute<'a, S> {
                 Operator::NotEq => todo!(),
                 Operator::And => todo!(),
                 Operator::Or => todo!(),
-                Operator::Negate => Some(-next()),
-                Operator::Identity | Operator::Transpose => Some(next()),
-            },*/
+                Operator::Negate => Some(Type::Number(-next_number!())),
+                Operator::Identity | Operator::Transpose => Some(Type::Number(next_number!())),
+            },
             _ => todo!(),
         }
     }
