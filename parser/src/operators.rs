@@ -4,6 +4,7 @@ use core::ops::Range;
 use itertools::PeekNth;
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
+use number::number::{FloatType, IntType, NumberType};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operator {
     Add,
@@ -27,6 +28,7 @@ pub enum Operator {
     NotEq,
     And,
     Or,
+    TypeCast(NumberType),
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OperatorToken {
@@ -185,6 +187,12 @@ impl Operator {
                 }
                 LexerToken::LeftAngleBracket => Self::Less,
                 LexerToken::RightAngleBracket => Self::Greater,
+                LexerToken::Word("i64") => Self::TypeCast(NumberType::Int(IntType::I64)),
+                LexerToken::Word("int") => Self::TypeCast(NumberType::Int(IntType::Arbitrary)),
+                LexerToken::Word("f64") => Self::TypeCast(NumberType::Float(FloatType::F64)),
+                LexerToken::Word("float") => {
+                    Self::TypeCast(NumberType::Float(FloatType::Arbitrary))
+                }
                 _ => return None,
             }
         } else {
@@ -202,7 +210,8 @@ impl Operator {
             | Self::Factorial
             | Self::SubFactorial
             | Self::Identity
-            | Self::Transpose => 1..2,
+            | Self::Transpose
+            | Self::TypeCast(_) => 1..2,
             Self::Add
             | Self::Sub
             | Self::Mul
@@ -227,7 +236,8 @@ impl Operator {
             | Self::Factorial
             | Self::SubFactorial
             | Self::Identity
-            | Self::Transpose => 1,
+            | Self::Transpose
+            | Self::TypeCast(_) => 1,
             Self::Add
             | Self::Sub
             | Self::Mul
@@ -280,6 +290,7 @@ impl Operator {
             Self::Pow | Self::Root => 8,
             Self::Mod => 9,
             Self::Factorial | Self::SubFactorial | Self::Transpose => 10,
+            Self::TypeCast(_) => 11,
         }
     }
     pub fn left_associative(self) -> bool {
@@ -304,7 +315,8 @@ impl Operator {
             | Self::Greater
             | Self::GreaterEq
             | Self::Eq
-            | Self::NotEq => false,
+            | Self::NotEq
+            | Self::TypeCast(_) => false,
         }
     }
 }

@@ -527,6 +527,14 @@ impl<'a> State<'a> {
                     tokens.next();
                     todo!()
                 }
+                LexerToken::Numeric(_, _, _)
+                    if tokens
+                        .peek()
+                        .is_some_and(|&(_, t)| t == LexerToken::Word("int")) =>
+                {
+                    tokens.next();
+                    todo!()
+                }
                 LexerToken::Numeric(base, whole, part) => {
                     let number =
                         NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));

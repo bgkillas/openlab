@@ -309,8 +309,9 @@ impl<'a, S: Write> Compute<'a, S> {
                     }
                     _ => unreachable!(),
                 })),
-                Operator::And => todo!(),
-                Operator::Or => todo!(),
+                Operator::And => Some(Type::Bool(next!().bool()? && next!().bool()?)),
+                Operator::Or => Some(Type::Bool(next!().bool()? || next!().bool()?)),
+                Operator::TypeCast(_) => todo!(),
             },
             Function::ComponentWise(o) => match o {
                 Operator::Add => next_number!()
@@ -344,6 +345,7 @@ impl<'a, S: Write> Compute<'a, S> {
                 Operator::Or => todo!(),
                 Operator::Negate => Some(Type::Number(-next_number!())),
                 Operator::Identity | Operator::Transpose => Some(Type::Number(next_number!())),
+                Operator::TypeCast(_) => todo!(),
             },
             _ => todo!(),
         }

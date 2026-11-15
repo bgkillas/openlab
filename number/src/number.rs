@@ -8,6 +8,23 @@ use core::iter;
 use core::ops::Neg;
 use core::ops::{Add, Div, Mul, Sub};
 use std::debug_assert_matches;
+#[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+pub enum FloatType {
+    #[default]
+    Arbitrary,
+    F64,
+}
+#[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+pub enum IntType {
+    #[default]
+    Arbitrary,
+    I64,
+}
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
+pub enum NumberType {
+    Float(FloatType),
+    Int(IntType),
+}
 #[derive(Clone, PartialEq, Debug)]
 pub enum Number<C>
 where
