@@ -183,7 +183,11 @@ impl<'a, S: Write> Compute<'a, S> {
         let (count, block) = self.funs[fun.strict_cast::<usize>()];
         let last = self.stack_start;
         self.stack_start = self.stack.len() - count.strict_cast::<usize>();
-        let ret = self.block_inner(block).option()?;
+        let needed_stack_size = 1 << 18;
+        let size = stacker::remaining_stack().unwrap_or(needed_stack_size);
+        let ret = stacker::maybe_grow(needed_stack_size, 2 * size, || {
+            self.block_inner(block).option()
+        })?;
         self.stack
             .drain(self.stack.len().checked_sub(count.strict_cast())?..);
         self.stack_start = last;
