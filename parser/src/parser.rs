@@ -61,6 +61,7 @@ pub enum ParseErrorInner {
     NoVarNamed,
     IfExpectedExpression,
     ExpectedFnName,
+    CommentNotEnded,
 }
 impl ParseErrorInner {
     pub fn range<R>(self, range: R) -> ParseError
@@ -503,34 +504,69 @@ impl<'a> State<'a> {
                     self.push_operator(OperatorToken::LeftBracket(Bracket::Square));
                 }
                 LexerToken::RightSquareBracket => self.close_off_bracket(Bracket::Square)?,
+                LexerToken::FowardSlash
+                    if tokens
+                        .next_if(|&(_, t)| t == LexerToken::Asterisk)
+                        .is_some() =>
+                {
+                    loop {
+                        let mut has_some = false;
+                        for (_, tkn) in tokens.by_ref() {
+                            if tkn == LexerToken::Asterisk {
+                                has_some = true;
+                                break;
+                            }
+                        }
+                        if !has_some {
+                            return Err(ParseErrorInner::CommentNotEnded.range(0..0));
+                        }
+                        if tokens
+                            .next()
+                            .is_some_and(|(_, t)| t == LexerToken::FowardSlash)
+                        {
+                            break;
+                        }
+                    }
+                }
+                LexerToken::FowardSlash
+                    if tokens
+                        .next_if(|&(_, t)| t == LexerToken::FowardSlash)
+                        .is_some() =>
+                {
+                    for (_, tkn) in tokens.by_ref() {
+                        if tkn == LexerToken::NewLine {
+                            break;
+                        }
+                    }
+                }
                 LexerToken::Numeric(_, _, _)
                     if tokens
-                        .peek()
-                        .is_some_and(|&(_, t)| t == LexerToken::Word("i64")) =>
+                        .next_if(|&(_, t)| t == LexerToken::Word("i64"))
+                        .is_some() =>
                 {
                     tokens.next();
                     todo!()
                 }
                 LexerToken::Numeric(_, _, _)
                     if tokens
-                        .peek()
-                        .is_some_and(|&(_, t)| t == LexerToken::Word("f64")) =>
+                        .next_if(|&(_, t)| t == LexerToken::Word("f64"))
+                        .is_some() =>
                 {
                     tokens.next();
                     todo!()
                 }
                 LexerToken::Numeric(_, _, _)
                     if tokens
-                        .peek()
-                        .is_some_and(|&(_, t)| t == LexerToken::Word("float")) =>
+                        .next_if(|&(_, t)| t == LexerToken::Word("float"))
+                        .is_some() =>
                 {
                     tokens.next();
                     todo!()
                 }
                 LexerToken::Numeric(_, _, _)
                     if tokens
-                        .peek()
-                        .is_some_and(|&(_, t)| t == LexerToken::Word("int")) =>
+                        .next_if(|&(_, t)| t == LexerToken::Word("int"))
+                        .is_some() =>
                 {
                     tokens.next();
                     todo!()
