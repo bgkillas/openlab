@@ -1,10 +1,10 @@
 use crate::functions::Function;
-use crate::parser::State;
+use crate::parser::{State, get_conversion_type};
 use core::ops::Range;
 use itertools::PeekNth;
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
-use number::number::{FloatType, IntType, NumberType};
+use number::number::NumberType;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operator {
     Add,
@@ -187,11 +187,8 @@ impl Operator {
                 }
                 LexerToken::LeftAngleBracket => Self::Less,
                 LexerToken::RightAngleBracket => Self::Greater,
-                LexerToken::Word("i64") => Self::TypeCast(NumberType::Int(IntType::I64)),
-                LexerToken::Word("int") => Self::TypeCast(NumberType::Int(IntType::Arbitrary)),
-                LexerToken::Word("f64") => Self::TypeCast(NumberType::Float(FloatType::F64)),
-                LexerToken::Word("float") => {
-                    Self::TypeCast(NumberType::Float(FloatType::Arbitrary))
+                LexerToken::Word(word) if let Some(ty) = get_conversion_type(word) => {
+                    Self::TypeCast(ty)
                 }
                 _ => return None,
             }

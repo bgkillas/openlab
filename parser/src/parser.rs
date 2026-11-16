@@ -9,7 +9,7 @@ use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
-use number::number::Number;
+use number::number::{FloatType, IntType, Number, NumberType};
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
 use std::debug_assert_matches;
@@ -540,35 +540,11 @@ impl<'a> State<'a> {
                     }
                 }
                 LexerToken::Numeric(_, _, _)
-                    if tokens
-                        .next_if(|&(_, t)| t == LexerToken::Word("i64"))
-                        .is_some() =>
+                    if let Some(&(_, LexerToken::Word(peeked))) = tokens.peek()
+                        && let Some(ty) = get_conversion_type(peeked) =>
                 {
                     tokens.next();
-                    todo!()
-                }
-                LexerToken::Numeric(_, _, _)
-                    if tokens
-                        .next_if(|&(_, t)| t == LexerToken::Word("f64"))
-                        .is_some() =>
-                {
-                    tokens.next();
-                    todo!()
-                }
-                LexerToken::Numeric(_, _, _)
-                    if tokens
-                        .next_if(|&(_, t)| t == LexerToken::Word("float"))
-                        .is_some() =>
-                {
-                    tokens.next();
-                    todo!()
-                }
-                LexerToken::Numeric(_, _, _)
-                    if tokens
-                        .next_if(|&(_, t)| t == LexerToken::Word("int"))
-                        .is_some() =>
-                {
-                    tokens.next();
+                    _ = ty;
                     todo!()
                 }
                 LexerToken::Numeric(base, whole, part) => {
@@ -637,6 +613,22 @@ impl<'a> State<'a> {
         debug_assert_eq!(self.operator_stack, []);
         debug_assert_eq!(self.fn_inputs, [0; 0]);
     }
+}
+pub(crate) fn get_conversion_type(word: &str) -> Option<NumberType> {
+    Some(match word {
+        "float" => NumberType::Float(FloatType::Arbitrary),
+        "f128" => NumberType::Float(FloatType::F128),
+        "f64" => NumberType::Float(FloatType::F64),
+        "f32" => NumberType::Float(FloatType::F32),
+        "int" => NumberType::Int(IntType::Arbitrary),
+        "i128" => NumberType::Int(IntType::I128),
+        "i64" => NumberType::Int(IntType::I64),
+        "i32" => NumberType::Int(IntType::I32),
+        "u128" => NumberType::Int(IntType::U128),
+        "u64" => NumberType::Int(IntType::U64),
+        "u32" => NumberType::Int(IntType::U32),
+        _ => return None,
+    })
 }
 impl BlockToken {
     pub fn parse_expression_str(options: ParserOptions<'_>, s: &str) -> Result<Self, ParseError> {

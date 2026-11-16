@@ -12,18 +12,49 @@ use std::debug_assert_matches;
 pub enum FloatType {
     #[default]
     Arbitrary,
+    F128,
     F64,
+    F32,
 }
 #[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum IntType {
     #[default]
     Arbitrary,
+    U128,
+    I128,
+    U64,
     I64,
+    U32,
+    I32,
 }
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum NumberType {
     Float(FloatType),
     Int(IntType),
+    //Rational(RationalType)
+}
+#[derive(Clone, Debug)]
+pub enum NumberElement {
+    Float(FloatElement),
+    Int(IntElement),
+    //Rational(RationalElement)
+}
+#[derive(Clone, Debug)]
+pub enum FloatElement {
+    Arbitrary(!),
+    F128(!),
+    F64(f64),
+    F32(f32),
+}
+#[derive(Clone, Debug)]
+pub enum IntElement {
+    Arbitrary(!),
+    U128(u128),
+    I128(i128),
+    U64(u64),
+    I64(i64),
+    U32(u32),
+    I32(i32),
 }
 #[derive(Clone, PartialEq, Debug)]
 pub enum Number<C>
