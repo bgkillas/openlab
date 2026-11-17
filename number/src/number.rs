@@ -1,9 +1,12 @@
+use crate::float::complex::Complex;
 use crate::matrix::dense::Matrix;
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
+use crate::rational::impls::Rational;
 use crate::traits::assign::NegAssign;
 use crate::traits::matrix::MatrixImpl as _;
 use crate::traits::number::NumberImpl;
 use crate::traits::pow::{Pow, Root};
+use crate::units::NumberUnits;
 use core::iter;
 use core::ops::Neg;
 use core::ops::{Add, Div, Mul, Sub};
@@ -43,18 +46,18 @@ pub enum NumberElement {
 pub enum FloatElement {
     Arbitrary(!),
     F128(!),
-    F64(f64),
-    F32(f32),
+    F64(NumberUnits<Complex<f64>>),
+    F32(NumberUnits<Complex<f32>>),
 }
 #[derive(Clone, Debug)]
 pub enum IntElement {
     Arbitrary(!),
-    U128(u128),
-    I128(i128),
-    U64(u64),
-    I64(i64),
-    U32(u32),
-    I32(i32),
+    U128(Rational<u128>),
+    I128(Rational<i128>),
+    U64(Rational<u64>),
+    I64(Rational<i64>),
+    U32(Rational<u32>),
+    I32(Rational<i32>),
 }
 #[derive(Clone, PartialEq, Debug)]
 pub enum Number<C>
