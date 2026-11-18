@@ -20,7 +20,7 @@ pub enum FloatType {
     F32,
 }
 #[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
-pub enum IntType {
+pub enum RationalType {
     #[default]
     Arbitrary,
     U128,
@@ -33,14 +33,12 @@ pub enum IntType {
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum NumberType {
     Float(FloatType),
-    Int(IntType),
-    //Rational(RationalType)
+    Rational(RationalType),
 }
 #[derive(Clone, Debug)]
 pub enum NumberElement {
     Float(FloatElement),
-    Int(IntElement),
-    //Rational(RationalElement)
+    Rational(RationalElement),
 }
 #[derive(Clone, Debug)]
 pub enum FloatElement {
@@ -50,7 +48,7 @@ pub enum FloatElement {
     F32(NumberUnits<Complex<f32>>),
 }
 #[derive(Clone, Debug)]
-pub enum IntElement {
+pub enum RationalElement {
     Arbitrary(!),
     U128(Rational<u128>),
     I128(Rational<i128>),

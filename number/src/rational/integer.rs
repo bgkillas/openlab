@@ -1,13 +1,7 @@
 use core::fmt::Debug;
-use core::ops::{Add, Div, Mul, Sub};
-pub trait IntegerTrait:
-    Add<Self, Output = Self>
-    + Mul<Self, Output = Self>
-    + Sub<Self, Output = Self>
-    + Div<Self, Output = Self>
-    + Sized
-    + Clone
-    + Debug
-    + Copy
-{
+pub trait IntegerTrait: Sized + Clone + Debug + Copy {
+    fn add(self, rhs: Self) -> Option<Self>;
+    fn sub(self, rhs: Self) -> Option<Self>;
+    fn mul(self, rhs: Self) -> Option<Self>;
+    fn div(self, rhs: Self) -> Option<Self>;
 }

@@ -16,6 +16,7 @@ mod assign_macros;
 pub mod float;
 pub mod matrix;
 pub mod number;
+pub mod number_impls;
 pub mod rational;
 pub mod traits;
 pub mod units;
