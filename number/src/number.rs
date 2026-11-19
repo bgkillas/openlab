@@ -12,27 +12,27 @@ use core::ops::Neg;
 use core::ops::{Add, Div, Mul, Sub};
 use std::debug_assert_matches;
 #[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
-pub enum FloatType {
-    #[default]
+pub enum ComplexType {
     Arbitrary,
     F128,
+    #[default]
     F64,
     F32,
 }
 #[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum RationalType {
-    #[default]
     Arbitrary,
     U128,
     I128,
     U64,
+    #[default]
     I64,
     U32,
     I32,
 }
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum NumberType {
-    Float(FloatType),
+    Complex(ComplexType),
     Rational(RationalType),
 }
 #[derive(Clone, Debug)]

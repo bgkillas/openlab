@@ -9,7 +9,7 @@ use itertools::{PeekNth, peek_nth};
 use lexer::iter::LexerIter;
 use lexer::token::LexerToken;
 use number::float::complex::Complex;
-use number::number::{FloatType, Number, NumberType, RationalType};
+use number::number::{ComplexType, Number, NumberType, RationalType};
 use number::traits::number::NumberImpl as _;
 use number::units::NumberUnits;
 use std::debug_assert_matches;
@@ -616,10 +616,10 @@ impl<'a> State<'a> {
 }
 pub(crate) fn get_conversion_type(word: &str) -> Option<NumberType> {
     Some(match word {
-        "float" => NumberType::Float(FloatType::Arbitrary),
-        "f128" => NumberType::Float(FloatType::F128),
-        "f64" => NumberType::Float(FloatType::F64),
-        "f32" => NumberType::Float(FloatType::F32),
+        "float" => NumberType::Complex(ComplexType::Arbitrary),
+        "f128" => NumberType::Complex(ComplexType::F128),
+        "f64" => NumberType::Complex(ComplexType::F64),
+        "f32" => NumberType::Complex(ComplexType::F32),
         "int" => NumberType::Rational(RationalType::Arbitrary),
         "i128" => NumberType::Rational(RationalType::I128),
         "i64" => NumberType::Rational(RationalType::I64),
