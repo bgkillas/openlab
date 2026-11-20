@@ -91,13 +91,19 @@ impl<'a> LexerIter<'a> {
             "`" => LexerToken::Backtick,
             "~" => LexerToken::Tilde,
             "," => LexerToken::Comma,
-            "." => LexerToken::Period,
             "/" => LexerToken::FowardSlash,
             "|" => LexerToken::Bar,
             "@" => LexerToken::At,
             "%" => LexerToken::Percent,
             "\\" => LexerToken::BackSlash,
             "\n" => LexerToken::NewLine,
+            "." if self.graphemes.peek().is_some_and(|&(_, t)| {
+                matches!(t, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+            }) =>
+            {
+                self.get_num().unwrap_or(LexerToken::UnexpectedEnd)
+            }
+            "." => LexerToken::Period,
             "0" if self.graphemes.next_if(|&(_, s)| s == "<").is_some()
                 && let Some(base_str) = get_base(&self.source[self.cursor + 2..])
                 && let Ok(base) = u8::from_str(base_str)
@@ -153,14 +159,23 @@ impl<'a> LexerIter<'a> {
     }
     pub fn get_num(&mut self) -> Option<LexerToken<'a>> {
         let mut start = self.cursor;
-        let g =
-            self.until(|s| !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"));
-        let has_deci = g == ".";
-        let whole = self.source[start..self.cursor].parse().ok()?;
+        let (has_deci, whole, skip_dot) = if self.source[start..].starts_with('.') {
+            (true, 0, true)
+        } else {
+            let g = self
+                .until(|s| !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"));
+            (
+                g == ".",
+                self.source[start..self.cursor].parse().ok()?,
+                false,
+            )
+        };
         let fraction = if has_deci {
             start = self.cursor + 1;
-            self.graphemes.next();
-            if self.graphemes.peek().is_some_and(|&(_, s)| {
+            if !skip_dot {
+                self.graphemes.next();
+            }
+            if dbg!(self.graphemes.peek()).is_some_and(|&(_, s)| {
                 matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
             }) {
                 self.until(|s| {
