@@ -67,7 +67,10 @@ impl<'a, S: Write> Compute<'a, S> {
         for (i, block_token) in block.blocks.iter().enumerate() {
             match block_token {
                 BlockToken::Expression(expr) => {
-                    self.expr(expr)?;
+                    let res = self.expr(expr);
+                    if !res.is_none() {
+                        res?;
+                    }
                 }
                 BlockToken::PrintExpression(expr) => {
                     let res = self.expr(expr)?;

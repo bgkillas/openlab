@@ -163,7 +163,7 @@ impl<'a> State<'a> {
                 LexerToken::Word("fn") => self.parse_fn(options, tokens)?,
                 LexerToken::Word("let") => self.parse_let(options, tokens)?,
                 LexerToken::Word("mut") => self.parse_mut(options, tokens)?,
-                LexerToken::Word("return") => todo!(),
+                LexerToken::Word("return") => self.parse_return(options, tokens)?,
                 LexerToken::LeftCurlyBracket => {
                     BlockToken::Block(self.parse_block_inner(options, tokens)?)
                 }
@@ -193,6 +193,19 @@ impl<'a> State<'a> {
         self.variables.drain(len..);
         self.funs.drain(fun_len..);
         Ok(block)
+    }
+    fn parse_return(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<BlockToken, ParseError> {
+        let tkn = tokens.next();
+        debug_assert_matches!(tkn, Some((_, LexerToken::Word("return"))));
+        match self.parse_expression(options, tokens)? {
+            BlockToken::Expression(expr) => Ok(BlockToken::Return(expr)),
+            BlockToken::PrintExpression(expr) => Ok(BlockToken::PrintReturn(expr)),
+            _ => unreachable!(),
+        }
     }
     fn parse_fn(
         &mut self,
