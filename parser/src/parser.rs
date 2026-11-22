@@ -44,6 +44,7 @@ pub enum BlockToken {
     PrintLetAssignment(Expression),
     PrintReturn(Expression),
     If(Expression, Block, Option<Block>),
+    Loop(Block),
 }
 pub struct FormatStr<'a> {
     pub str: &'a str,
@@ -157,7 +158,7 @@ impl<'a> State<'a> {
                 LexerToken::Word("for") => todo!(),
                 LexerToken::Word("in") => todo!(),
                 LexerToken::Word("while") => todo!(),
-                LexerToken::Word("loop") => todo!(),
+                LexerToken::Word("loop") => self.parse_loop(options, tokens)?,
                 LexerToken::Word("break") => todo!(),
                 LexerToken::Word("continue") => todo!(),
                 LexerToken::Word("fn") => self.parse_fn(options, tokens)?,
@@ -193,6 +194,16 @@ impl<'a> State<'a> {
         self.variables.drain(len..);
         self.funs.drain(fun_len..);
         Ok(block)
+    }
+    fn parse_loop(
+        &mut self,
+        options: ParserOptions<'_>,
+        tokens: &mut PeekNth<LexerIter<'a>>,
+    ) -> Result<BlockToken, ParseError> {
+        let tkn = tokens.next();
+        debug_assert_matches!(tkn, Some((_, LexerToken::Word("loop"))));
+        let block = self.parse_block_inner(options, tokens)?;
+        Ok(BlockToken::Loop(block))
     }
     fn parse_return(
         &mut self,

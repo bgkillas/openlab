@@ -148,6 +148,12 @@ impl<'a, S: Write> Compute<'a, S> {
                         );
                     }
                 }
+                BlockToken::Loop(b) => loop {
+                    let res = self.block(b);
+                    if !res.is_none() {
+                        res?;
+                    }
+                },
             }
         }
         ReturnType::None

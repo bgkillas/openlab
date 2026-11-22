@@ -14,8 +14,10 @@ miri:
     cargo miri test -- --nocapture --test-threads=1
 test:
     cargo nextest run -- --nocapture
+    cargo run -- "./tests"
 test_rel:
     cargo nextest run --release -- --nocapture
+    cargo run --release -- "./tests"
 bench:
     cargo bench -- --nocapture
 clippy:
