@@ -255,7 +255,7 @@ impl<'a, S: Write> Compute<'a, S> {
             }
             Function::List(i) => {
                 if i == 0 {
-                    Some(Type::Number(Number::List(Vec::new())))
+                    Some(Type::List(Vec::new()))
                 } else {
                     let vec = inputs.collect();
                     Some(Type::List(vec))

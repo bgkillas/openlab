@@ -1,9 +1,8 @@
-use crate::parser::NumberInner;
 use number::matrix::size::{MatrixDimension, MatrixIndex};
 use number::number::Number;
 #[derive(PartialEq, Clone, Debug)]
 pub enum Type {
-    Number(Number<NumberInner>),
+    Number(Number),
     List(Vec<Self>),
     Bool(bool),
     Function(u32),
@@ -35,7 +34,7 @@ pub enum NumberIndex {
     List(usize, Box<Self>),
 }
 impl Type {
-    pub fn number(self) -> Option<Number<NumberInner>> {
+    pub fn number(self) -> Option<Number> {
         match self {
             Self::Number(a) => Some(a),
             _ => None,
