@@ -10,6 +10,7 @@ use crate::units::NumberUnits;
 use core::iter;
 use core::ops::Neg;
 use core::ops::{Add, Div, Mul, Sub};
+use malachite::float::BigExponentFloat;
 use std::debug_assert_matches;
 #[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum ComplexType {
@@ -42,14 +43,14 @@ pub enum NumberElement {
 }
 #[derive(Clone, Debug)]
 pub enum FloatElement {
-    Arbitrary(!),
+    Arbitrary(BigExponentFloat),
     F128(!),
     F64(NumberUnits<Complex<f64>>),
     F32(NumberUnits<Complex<f32>>),
 }
 #[derive(Clone, Debug)]
 pub enum RationalElement {
-    Arbitrary(!),
+    Arbitrary(malachite::Rational),
     U128(Rational<u128>),
     I128(Rational<i128>),
     U64(Rational<u64>),

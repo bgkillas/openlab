@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 replace_with = {workspace = true}
 itertools = {workspace = true}
+malachite = {workspace = true}
 
 [dev-dependencies]
 criterion = {workspace = true}
