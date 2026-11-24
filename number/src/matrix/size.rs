@@ -1,19 +1,19 @@
 #[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub struct MatrixDimension {
-    pub width: u32,
-    pub height: u32,
+    pub width: usize,
+    pub height: usize,
 }
 #[derive(Clone, Copy, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub struct MatrixIndex {
-    pub row: u32,
-    pub col: u32,
+    pub row: usize,
+    pub col: usize,
 }
 impl MatrixDimension {
     pub fn width(self) -> usize {
-        self.width.strict_cast()
+        self.width
     }
     pub fn height(self) -> usize {
-        self.height.strict_cast()
+        self.height
     }
     pub fn size(self) -> usize {
         self.width() * self.height()
@@ -26,19 +26,19 @@ impl MatrixDimension {
         let n = index.row() * self.width() + index.col();
         (index.col < self.width && index.row < self.height).then_some(n)
     }
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Self { width, height }
     }
 }
 impl MatrixIndex {
-    pub fn new(row: u32, col: u32) -> Self {
+    pub fn new(row: usize, col: usize) -> Self {
         Self { row, col }
     }
     pub fn row(self) -> usize {
-        self.row.strict_cast()
+        self.row
     }
     pub fn col(self) -> usize {
-        self.col.strict_cast()
+        self.col
     }
     pub fn from(dim: MatrixDimension, index: usize) -> Option<Self> {
         let row = (index / dim.width()).strict_cast();

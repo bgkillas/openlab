@@ -92,7 +92,7 @@ fn units_inner(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Units 
         .unwrap()
         .units
 }
-fn units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Number<NumberInner> {
+fn units(options: ParserOptions<'_>, prefix: Prefix, unit: Unit) -> Number {
     Number::Complex(Dimension::number_inner(options, prefix, unit).unwrap())
 }
 fn expr_number(f: f64) -> ExpressionToken {

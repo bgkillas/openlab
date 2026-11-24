@@ -1,5 +1,4 @@
 #![feature(integer_casts)]
-#![feature(cast_maybe_uninit)]
 #![feature(type_info)]
 #![feature(const_trait_impl)]
 #![feature(const_cmp)]

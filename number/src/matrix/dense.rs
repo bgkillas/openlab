@@ -1,11 +1,10 @@
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
 use crate::traits::matrix::MatrixImpl as _;
 use crate::traits::number::NumberImpl;
-use alloc::alloc::Global;
-use core::alloc::{Allocator as _, Layout};
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
+use core::mem::needs_drop;
 use core::ptr::NonNull;
 use core::ptr::drop_in_place;
 use core::slice;
@@ -15,7 +14,7 @@ pub struct Matrix<C>
 where
     C: NumberImpl,
 {
-    pub(crate) entries: Option<NonNull<C>>,
+    pub(crate) entries: Box<[MaybeUninit<C>]>,
     pub dimension: MatrixDimension,
 }
 impl<C: NumberImpl> PartialEq for Matrix<C> {
@@ -55,10 +54,8 @@ impl<C: NumberImpl> Matrix<C> {
         if dimension.size() == 0 {
             return Self::default();
         }
-        let layout = Layout::array::<C>(dimension.size()).unwrap();
-        let ptr = Global.allocate(layout).unwrap();
         Self {
-            entries: Some(ptr.cast()),
+            entries: Box::new_uninit_slice(dimension.size()),
             dimension,
         }
     }
@@ -136,8 +133,8 @@ impl<C: NumberImpl> Matrix<C> {
             return;
         }
         let new = Self::new_with(dim, |i, index| {
-            if let Some(ptr) = self.get_ptr(index) {
-                unsafe { ptr.read() }
+            if let Some(elem) = self.get(index) {
+                elem
             } else {
                 fun(i, index)
             }
@@ -150,60 +147,39 @@ impl<C: NumberImpl> Matrix<C> {
             if dim.index(i).is_some() {
                 continue;
             }
-            unsafe {
-                drop_in_place(entry);
+            if needs_drop::<C>() {
+                unsafe {
+                    drop_in_place(entry);
+                }
             }
         }
-        if let Some(ptr) = self.entries {
-            let layout = Layout::array::<C>(self.size()).unwrap();
-            unsafe {
-                Global.deallocate(ptr.cast(), layout);
-            }
-            self.entries = None;
-            self.dimension = MatrixDimension::default();
-        }
-    }
-    pub(crate) fn get_ptr(&self, index: MatrixIndex) -> Option<NonNull<C>> {
-        if let Some(ptr) = self.entries {
-            let i = self.dimension.index(index)?;
-            Some(unsafe { ptr.add(i) })
-        } else {
-            None
-        }
+        self.entries = Box::default();
+        self.dimension = MatrixDimension::default();
     }
     pub(crate) fn get_uninit(&mut self, index: MatrixIndex) -> Option<&mut MaybeUninit<C>> {
-        if let Some(ptr) = self.entries {
-            let i = self.dimension.index(index)?;
-            let entry = unsafe { ptr.add(i) };
-            Some(unsafe { entry.cast_uninit().as_mut() })
-        } else {
-            None
-        }
+        let i = self.dimension.index(index)?;
+        Some(&mut self.entries[i])
     }
     pub fn entries(&self) -> &[C] {
-        if let Some(ptr) = self.entries {
-            unsafe { slice::from_raw_parts(ptr.as_ptr(), self.size()) }
-        } else {
-            &[]
-        }
+        unsafe { self.entries.assume_init_ref() }
     }
-    pub fn row(&self, n: u32) -> &[C] {
+    pub fn row(&self, n: usize) -> &[C] {
         let u = n.strict_cast::<usize>();
         &self.entries()[self.width() * u..self.width() * (u + 1)]
     }
-    pub fn row_mut(&mut self, n: u32) -> &mut [C] {
+    pub fn row_mut(&mut self, n: usize) -> &mut [C] {
         let u = n.strict_cast::<usize>();
         let width = self.width();
         &mut self.entries_mut()[width * u..width * (u + 1)]
     }
-    pub fn row_disjoint_mut<const N: usize>(&mut self, n: [u32; N]) -> Option<[&mut [C]; N]> {
-        if n.iter().duplicates().count() != 0 || self.entries.is_none() {
+    pub fn row_disjoint_mut<const N: usize>(&mut self, n: [usize; N]) -> Option<[&mut [C]; N]> {
+        if n.iter().duplicates().count() != 0 || self.entries.is_empty() {
             return None;
         }
         let u = n.map(|i| i.strict_cast::<usize>());
         let rows = u.map(|i| {
-            let ptr = unsafe { self.entries.unwrap().add(self.width() * i) };
-            unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), self.width()) }
+            let ptr = unsafe { self.entries.as_mut_ptr().cast::<C>().add(self.width() * i) };
+            unsafe { slice::from_raw_parts_mut(ptr, self.width()) }
         });
         Some(rows)
     }
@@ -229,11 +205,7 @@ impl<C: NumberImpl> Matrix<C> {
         self.entries_mut().chunks_exact_mut(width.max(1))
     }
     pub fn entries_mut(&mut self) -> &mut [C] {
-        if let Some(ptr) = self.entries {
-            unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), self.size()) }
-        } else {
-            &mut []
-        }
+        unsafe { self.entries.assume_init_mut() }
     }
     pub fn iter(&self) -> impl Iterator<Item = (MatrixIndex, C)> {
         let dim = self.dimension;
@@ -251,11 +223,7 @@ impl<C: NumberImpl> Matrix<C> {
             .map(move |(i, val)| (MatrixIndex::from(dim, i).unwrap(), val))
     }
     fn entries_uninit_mut(&mut self) -> &mut [MaybeUninit<C>] {
-        if let Some(ptr) = self.entries {
-            unsafe { slice::from_raw_parts_mut(ptr.cast_uninit().as_ptr(), self.size()) }
-        } else {
-            &mut []
-        }
+        &mut self.entries
     }
 }
 pub struct ColIter<'a, C: NumberImpl> {

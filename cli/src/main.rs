@@ -1,5 +1,4 @@
 use openlab::compute::Compute;
-use openlab::parser::lexer::iter::LexerIter;
 use openlab::parser::options::ParserOptions;
 use openlab::parser::parser::Block;
 use std::env::args;
@@ -26,8 +25,8 @@ fn main() {
 }
 fn run_expr(options: ParserOptions, expr: &str) {
     let block = Block::parse(options, expr);
-    println!("{:#?}", LexerIter::new(expr).collect::<Vec<_>>());
-    println!("{block:#?}");
+    //println!("{:#?}", LexerIter::new(expr).collect::<Vec<_>>());
+    //println!("{block:#?}");
     if let Ok(inner) = block {
         let tmr = std::time::Instant::now();
         let compute = Compute::stdout().compute(&inner);

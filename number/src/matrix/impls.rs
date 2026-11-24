@@ -118,7 +118,7 @@ impl<C: NumberImpl> MatrixImpl for Matrix<C> {
             .transpose()?;
         self.entries_mut().get_disjoint_mut(i).ok()
     }
-    fn swap_row(&mut self, from: u32, to: u32) -> Option<()> {
+    fn swap_row(&mut self, from: usize, to: usize) -> Option<()> {
         if from == to {
             return Some(());
         }
@@ -126,7 +126,7 @@ impl<C: NumberImpl> MatrixImpl for Matrix<C> {
         a.swap_with_slice(b);
         Some(())
     }
-    fn swap_col(&mut self, from: u32, to: u32) -> Option<()> {
+    fn swap_col(&mut self, from: usize, to: usize) -> Option<()> {
         if from == to {
             return Some(());
         }

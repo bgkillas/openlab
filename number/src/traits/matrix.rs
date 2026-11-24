@@ -26,6 +26,6 @@ pub trait MatrixImpl: Default + Clone + Debug + PartialEq + Neg<Output = Self> +
         &mut self,
         indices: [MatrixIndex; N],
     ) -> Option<[&mut Self::Entry; N]>;
-    fn swap_row(&mut self, from: u32, to: u32) -> Option<()>;
-    fn swap_col(&mut self, from: u32, to: u32) -> Option<()>;
+    fn swap_row(&mut self, from: usize, to: usize) -> Option<()>;
+    fn swap_col(&mut self, from: usize, to: usize) -> Option<()>;
 }

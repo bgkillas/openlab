@@ -19,7 +19,7 @@ test_rel:
     cargo nextest run --release -- --nocapture
     cargo run --release -- "./tests"
 bench:
-    cargo bench -- --nocapture
+    taskset --cpu-list 0 cargo bench -- --nocapture
 clippy:
     cargo fmt
     cargo clippy

@@ -234,17 +234,17 @@ impl<'a, S: Write> Compute<'a, S> {
                     });
                     let mat = match first {
                         Type::Number(Number::Complex(c)) => {
-                            let dim = MatrixDimension::new(i, 1);
+                            let dim = MatrixDimension::new(i.strict_cast(), 1);
                             let mut new_iter = iter::once(Number::Complex(c)).chain(number_inputs);
                             Matrix::new_with_try(dim, |_, _| new_iter.next()?.complex())?
                         }
                         Type::Number(Number::Matrix(m)) if m.dimension.height == 1 => {
-                            let dim = MatrixDimension::new(m.dimension.width, i);
+                            let dim = MatrixDimension::new(m.dimension.width, i.strict_cast());
                             let mut new_iter = iter::once(Number::Matrix(m)).chain(number_inputs);
                             Matrix::from_rows_try(dim, |_, _| new_iter.next()?.matrix())?
                         }
                         Type::Number(Number::Matrix(m)) if m.dimension.width == 1 => {
-                            let dim = MatrixDimension::new(i, m.dimension.height);
+                            let dim = MatrixDimension::new(i.strict_cast(), m.dimension.height);
                             let mut new_iter = iter::once(Number::Matrix(m)).chain(number_inputs);
                             Matrix::from_cols_try(dim, |_, _| new_iter.next()?.matrix())?
                         }
@@ -269,7 +269,7 @@ impl<'a, S: Write> Compute<'a, S> {
                         Type::Number(n) => Some(n),
                         _ => None,
                     });
-                    let dim = MatrixDimension::new(i, j);
+                    let dim = MatrixDimension::new(i.strict_cast(), j.strict_cast());
                     let mat = Matrix::new_with_try(dim, |_, _| number_inputs.next()?.complex())?;
                     Some(Type::Number(Number::Matrix(mat)))
                 }
