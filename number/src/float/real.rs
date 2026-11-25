@@ -12,6 +12,7 @@ use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 use core::ops::{Deref, DerefMut};
+use core::str::FromStr as _;
 use malachite::base::num::conversion::traits::FromStringBase as _;
 use malachite::float::Float;
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -36,6 +37,9 @@ macro_rules! define_float {
                 1.0
             }
             fn parse_number(base: u8, str: &str) -> Option<Self> {
+                if base == 10 {
+                    return Self::from_str(str).ok();
+                }
                 Self::try_from(Float::from_string_base(base, str)?).ok()
             }
             fn try_real(self) -> Option<Self::NumberReal> {
