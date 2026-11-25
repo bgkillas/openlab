@@ -30,11 +30,16 @@ fn run_expr(options: ParserOptions, expr: &str) {
         openlab::parser::lexer::iter::LexerIter::new(expr).collect::<Vec<_>>()
     );*/
     //println!("{block:#?}");
-    if let Ok(inner) = block {
-        let tmr = std::time::Instant::now();
-        let compute = Compute::stdout().compute(&inner);
-        let time = tmr.elapsed().as_nanos();
-        println!("{compute:#?}");
-        println!("{time}");
+    match block {
+        Ok(inner) => {
+            let tmr = std::time::Instant::now();
+            let compute = Compute::stdout().compute(&inner);
+            let time = tmr.elapsed().as_nanos();
+            println!("{compute:#?}");
+            println!("{time}");
+        }
+        Err(e) => {
+            println!("{e:?}");
+        }
     }
 }

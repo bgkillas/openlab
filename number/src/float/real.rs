@@ -14,6 +14,8 @@ use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr as _;
 use malachite::base::num::conversion::traits::FromStringBase as _;
+use malachite::base::num::conversion::traits::RoundingFrom as _;
+use malachite::base::rounding_modes::RoundingMode;
 use malachite::float::Float;
 #[derive(Clone, Copy, PartialEq, Default)]
 #[repr(transparent)]
@@ -40,7 +42,10 @@ macro_rules! define_float {
                 if base == 10 {
                     return Self::from_str(str).ok();
                 }
-                Self::try_from(Float::from_string_base(base, str)?).ok()
+                Some(
+                    Self::rounding_from(Float::from_string_base(base, str)?, RoundingMode::Nearest)
+                        .0,
+                )
             }
             fn try_real(self) -> Option<Self::NumberReal> {
                 Some(self)
