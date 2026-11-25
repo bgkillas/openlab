@@ -63,6 +63,7 @@ pub enum ParseErrorInner {
     IfExpectedExpression,
     ExpectedFnName,
     CommentNotEnded,
+    NumberOutOfRange,
 }
 impl ParseErrorInner {
     pub fn range<R>(self, range: R) -> ParseError
@@ -571,9 +572,10 @@ impl<'a> State<'a> {
                     _ = ty;
                     todo!()
                 }
-                LexerToken::Numeric(base, whole, part) => {
-                    let number =
-                        NumberInner::parse_number(base.unwrap_or(10), whole, part.unwrap_or(0));
+                LexerToken::Numeric(base, _, num) => {
+                    let Some(number) = NumberInner::parse_number(base.unwrap_or(10), num) else {
+                        return Err(ParseErrorInner::NumberOutOfRange.range(0..0));
+                    };
                     self.push_number(number);
                 }
                 LexerToken::NewLine => {

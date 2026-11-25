@@ -12,15 +12,13 @@ pub trait NumberImpl:
     fn zero() -> Self {
         Self::default()
     }
-    fn one() -> Self {
-        Self::parse_number(2, 1, 0)
-    }
+    fn one() -> Self;
     fn try_real(self) -> Option<Self::NumberReal>;
     fn from_real(real: Self::NumberReal) -> Self;
     fn is_zero(self) -> bool {
         self == Self::zero()
     }
-    fn parse_number(base: u8, whole: u128, part: u128) -> Self;
+    fn parse_number(base: u8, str: &str) -> Option<Self>;
     fn add(self, rhs: Self) -> Option<Self>;
     fn sub(self, rhs: Self) -> Option<Self>;
     fn mul(self, rhs: Self) -> Option<Self>;
@@ -64,14 +62,17 @@ pub trait NumberImpl:
 }
 impl<T: RealImpl> NumberImpl for Complex<T> {
     type NumberReal = Real<T>;
+    fn one() -> Self {
+        Self::new_real(Real::one())
+    }
     fn try_real(self) -> Option<Self::NumberReal> {
         self.im.is_zero().then_some(self.re)
     }
     fn from_real(real: Self::NumberReal) -> Self {
         Self::new_real(real)
     }
-    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
-        Self::new_real(Real::<T>::parse_number(base, whole, part))
+    fn parse_number(base: u8, str: &str) -> Option<Self> {
+        Some(Self::new_real(Real::<T>::parse_number(base, str)?))
     }
     fn add(self, rhs: Self) -> Option<Self> {
         Some(self + rhs)
@@ -94,14 +95,17 @@ impl<T: RealImpl> NumberImpl for Complex<T> {
 }
 impl<T: RealImpl> NumberImpl for Real<T> {
     type NumberReal = Self;
+    fn one() -> Self {
+        Self(T::one())
+    }
     fn try_real(self) -> Option<Self::NumberReal> {
         Some(self)
     }
     fn from_real(real: Self::NumberReal) -> Self {
         real
     }
-    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
-        Self(T::parse_number(base, whole, part))
+    fn parse_number(base: u8, str: &str) -> Option<Self> {
+        Some(Self(T::parse_number(base, str)?))
     }
     fn add(self, rhs: Self) -> Option<Self> {
         Some(self + rhs)

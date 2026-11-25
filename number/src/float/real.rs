@@ -12,6 +12,8 @@ use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 use core::ops::{Deref, DerefMut};
+use malachite::base::num::conversion::traits::FromStringBase as _;
+use malachite::float::Float;
 #[derive(Clone, Copy, PartialEq, Default)]
 #[repr(transparent)]
 pub struct Real<T: RealImpl = f64>(pub T);
@@ -30,15 +32,11 @@ macro_rules! define_float {
         impl BaseImpl for $ty {}
         impl NumberImpl for $ty {
             type NumberReal = $ty;
-            #[allow(clippy::cast_precision_loss)]
-            #[expect(clippy::as_conversions)]
-            fn parse_number(base: u8, whole: u128, part: u128) -> Self {
-                let mut num = whole as Self;
-                if part != 0 {
-                    let exp = part.ilog(u128::from(base)).strict_cast::<i32>() + 1;
-                    num += part as Self / Self::from(base).powi(exp);
-                }
-                num
+            fn one() -> Self {
+                1.0
+            }
+            fn parse_number(base: u8, str: &str) -> Option<Self> {
+                Self::try_from(Float::from_string_base(base, str)?).ok()
             }
             fn try_real(self) -> Option<Self::NumberReal> {
                 Some(self)

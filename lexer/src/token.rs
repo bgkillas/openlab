@@ -42,7 +42,7 @@ pub enum LexerToken<'a> {
     Bar,
     At,
     Percent,
-    Numeric(Option<u8>, u128, Option<u128>),
+    Numeric(Option<u8>, bool, &'a str),
     String(&'a str),
     Word(&'a str),
     UnexpectedEnd,
@@ -165,37 +165,25 @@ impl<'a> LexerIter<'a> {
         Some(LexerToken::String(&self.source[start + 1..self.cursor - 1]))
     }
     pub fn get_num(&mut self) -> Option<LexerToken<'a>> {
-        let mut start = self.cursor;
-        let (has_deci, whole, skip_dot) = if self.source[start..].starts_with('.') {
-            (true, 0, true)
+        let start = self.cursor;
+        let (has_deci, skip_dot) = if self.source[start..].starts_with('.') {
+            (true, true)
         } else {
             let g = self
                 .until(|s| !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"));
-            (
-                g == ".",
-                self.source[start..self.cursor].parse().ok()?,
-                false,
-            )
+            (g == ".", false)
         };
-        let fraction = if has_deci {
-            start = self.cursor + 1;
+        if has_deci {
             if !skip_dot {
                 self.graphemes.next();
             }
-            if dbg!(self.graphemes.peek()).is_some_and(|&(_, s)| {
-                matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
-            }) {
-                self.until(|s| {
-                    !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
-                });
-                Some(self.source[start..self.cursor].parse().ok()?)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-        Some(LexerToken::Numeric(None, whole, fraction))
+            self.until(|s| !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"));
+        }
+        Some(LexerToken::Numeric(
+            None,
+            has_deci,
+            &self.source[start..self.cursor],
+        ))
     }
     pub fn get_num_with(&mut self, base_str: &str) -> Option<LexerToken<'a>> {
         let base: u8 = match base_str {
@@ -207,31 +195,18 @@ impl<'a> LexerIter<'a> {
         self.get_num_with_arbitrary(base)
     }
     pub fn get_num_with_arbitrary(&mut self, base: u8) -> Option<LexerToken<'a>> {
-        let mut start = self.cursor;
+        let start = self.cursor;
         let g = self.until(|s| !is_digit(base, s));
         let has_deci = g == ".";
-        let whole =
-            u128::from_str_radix(&self.source[start..self.cursor], base.strict_cast()).ok()?;
-        let fraction = if has_deci {
-            start = self.cursor + 1;
+        if has_deci {
             self.graphemes.next();
-            if self
-                .graphemes
-                .peek()
-                .is_some_and(|&(_, s)| is_digit(base, s))
-            {
-                self.until(|s| !is_digit(base, s));
-                Some(
-                    u128::from_str_radix(&self.source[start..self.cursor], base.strict_cast())
-                        .ok()?,
-                )
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-        Some(LexerToken::Numeric(Some(base), whole, fraction))
+            self.until(|s| !is_digit(base, s));
+        }
+        Some(LexerToken::Numeric(
+            Some(base),
+            has_deci,
+            &self.source[start..self.cursor],
+        ))
     }
     pub fn until<F>(&mut self, mut stop: F) -> &str
     where

@@ -65,14 +65,17 @@ impl<T: NumberImpl, U: SimdTrait<N>, const N: usize> From<T> for NumberUnits<T, 
 }
 impl<U: SimdTrait<N>, const N: usize> NumberImpl for Units<U, N> {
     type NumberReal = U;
+    fn one() -> Self {
+        unreachable!()
+    }
     fn try_real(self) -> Option<Self::NumberReal> {
         None
     }
     fn from_real(_: Self::NumberReal) -> Self {
         unreachable!()
     }
-    fn parse_number(_: u8, _: u128, _: u128) -> Self {
-        Self::default()
+    fn parse_number(_: u8, _: &str) -> Option<Self> {
+        Some(Self::default())
     }
     fn add(self, rhs: Self) -> Option<Self> {
         (self.units == rhs.units).then_some(self)
@@ -100,14 +103,17 @@ where
     T::NumberReal: Cast<U>,
 {
     type NumberReal = T::NumberReal;
+    fn one() -> Self {
+        Self::from_real(T::NumberReal::one())
+    }
     fn try_real(self) -> Option<Self::NumberReal> {
         self.number.try_real()
     }
     fn from_real(real: Self::NumberReal) -> Self {
         Self::from(T::from_real(real))
     }
-    fn parse_number(base: u8, whole: u128, part: u128) -> Self {
-        Self::from(T::parse_number(base, whole, part))
+    fn parse_number(base: u8, str: &str) -> Option<Self> {
+        Some(Self::from(T::parse_number(base, str)?))
     }
     fn add(self, rhs: Self) -> Option<Self> {
         Some(Self {
