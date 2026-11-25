@@ -1,3 +1,4 @@
+use crate::float::arbitrary::Float;
 use crate::float::complex::Complex;
 use crate::matrix::dense::Matrix;
 use crate::matrix::size::{MatrixDimension, MatrixIndex};
@@ -10,10 +11,9 @@ use crate::units::NumberUnits;
 use core::iter;
 use core::ops::Neg;
 use core::ops::{Add, Div, Mul, Sub};
-use malachite::float::BigExponentFloat;
 #[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
 pub enum ComplexType {
-    Arbitrary,
+    Arbitrary(u64),
     F128,
     #[default]
     F64,
@@ -42,7 +42,7 @@ pub enum NumberElement {
 }
 #[derive(Clone, Debug)]
 pub enum FloatElement {
-    Arbitrary(BigExponentFloat),
+    Arbitrary(Float),
     F128(!),
     F64(NumberUnits<Complex<f64>>),
     F32(NumberUnits<Complex<f32>>),
@@ -50,23 +50,6 @@ pub enum FloatElement {
 #[derive(Clone, Debug)]
 pub enum RationalElement {
     Arbitrary(malachite::Rational),
-    U128(Rational<u128>),
-    I128(Rational<i128>),
-    U64(Rational<u64>),
-    I64(Rational<i64>),
-    U32(Rational<u32>),
-    I32(Rational<i32>),
-}
-#[derive(Clone, Debug)]
-pub enum FloatElementRef<'a> {
-    Arbitrary(&'a BigExponentFloat),
-    F128(!),
-    F64(NumberUnits<Complex<f64>>),
-    F32(NumberUnits<Complex<f32>>),
-}
-#[derive(Clone, Debug)]
-pub enum RationalElementRef<'a> {
-    Arbitrary(&'a malachite::Rational),
     U128(Rational<u128>),
     I128(Rational<i128>),
     U64(Rational<u64>),

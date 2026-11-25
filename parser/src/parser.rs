@@ -640,7 +640,7 @@ impl<'a> State<'a> {
 }
 pub(crate) fn get_conversion_type(word: &str) -> Option<NumberType> {
     Some(match word {
-        "float" => NumberType::Complex(ComplexType::Arbitrary),
+        "float" => NumberType::Complex(ComplexType::Arbitrary(512)),
         "f128" => NumberType::Complex(ComplexType::F128),
         "f64" => NumberType::Complex(ComplexType::F64),
         "f32" => NumberType::Complex(ComplexType::F32),
