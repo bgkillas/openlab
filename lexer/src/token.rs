@@ -134,7 +134,14 @@ impl<'a> LexerIter<'a> {
                             && s.chars().next().unwrap().is_ascii_punctuation()
                             && s != "_")
                 });
-                LexerToken::Word(&self.source[start..self.cursor])
+                LexerToken::Word(if self.source[start..self.cursor] == *"float" {
+                    self.until(|s| {
+                        !matches!(s, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                    });
+                    &self.source[start..self.cursor]
+                } else {
+                    &self.source[start..self.cursor]
+                })
             }
         };
         Some((Range::from(init..self.cursor), token))

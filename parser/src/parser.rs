@@ -651,6 +651,11 @@ pub(crate) fn get_conversion_type(word: &str) -> Option<NumberType> {
         "u128" => NumberType::Rational(RationalType::U128),
         "u64" => NumberType::Rational(RationalType::U64),
         "u32" => NumberType::Rational(RationalType::U32),
+        _ if let Some(num) = word.strip_prefix("float")
+            && let Ok(prec) = num.parse() =>
+        {
+            NumberType::Complex(ComplexType::Arbitrary(prec))
+        }
         _ => return None,
     })
 }
