@@ -208,25 +208,49 @@ impl<T: RealImpl> DerefMut for Real<T> {
         &mut self.0
     }
 }
-impl<T: RealImpl> Add for Real<T> {
+impl<'a, T: RealImpl> Add<&'a Self> for Real<T> {
+    type Output = Self;
+    fn add(self, rhs: &'a Self) -> Self::Output {
+        Self(*self + **rhs)
+    }
+}
+impl<'a, T: RealImpl> Sub<&'a Self> for Real<T> {
+    type Output = Self;
+    fn sub(self, rhs: &'a Self) -> Self::Output {
+        Self(*self - **rhs)
+    }
+}
+impl<'a, T: RealImpl> Mul<&'a Self> for Real<T> {
+    type Output = Self;
+    fn mul(self, rhs: &'a Self) -> Self::Output {
+        Self(*self * **rhs)
+    }
+}
+impl<'a, T: RealImpl> Div<&'a Self> for Real<T> {
+    type Output = Self;
+    fn div(self, rhs: &'a Self) -> Self::Output {
+        Self(*self / **rhs)
+    }
+}
+impl<T: RealImpl> Add<Self> for Real<T> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         Self(*self + *rhs)
     }
 }
-impl<T: RealImpl> Sub for Real<T> {
+impl<T: RealImpl> Sub<Self> for Real<T> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         Self(*self - *rhs)
     }
 }
-impl<T: RealImpl> Mul for Real<T> {
+impl<T: RealImpl> Mul<Self> for Real<T> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         Self(*self * *rhs)
     }
 }
-impl<T: RealImpl> Div for Real<T> {
+impl<T: RealImpl> Div<Self> for Real<T> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
         Self(*self / *rhs)

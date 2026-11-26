@@ -146,21 +146,21 @@ impl<T: RealImpl> Neg for Complex<T> {
         Self::new(-self.re, -self.im)
     }
 }
-impl<T: RealImpl> Add<Self> for Complex<T> {
+impl<'a, T: RealImpl> Add<&'a Self> for Complex<T> {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(self, rhs: &'a Self) -> Self::Output {
         Self::new(self.re + rhs.re, self.im + rhs.im)
     }
 }
-impl<T: RealImpl> Sub<Self> for Complex<T> {
+impl<'a, T: RealImpl> Sub<&'a Self> for Complex<T> {
     type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn sub(self, rhs: &'a Self) -> Self::Output {
         Self::new(self.re - rhs.re, self.im - rhs.im)
     }
 }
-impl<T: RealImpl> Mul<Self> for Complex<T> {
+impl<'a, T: RealImpl> Mul<&'a Self> for Complex<T> {
     type Output = Self;
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(self, rhs: &'a Self) -> Self::Output {
         let Self { re: a, im: b } = self;
         let Self { re: c, im: d } = rhs;
         let ac = a * c;
@@ -170,9 +170,9 @@ impl<T: RealImpl> Mul<Self> for Complex<T> {
         Self::new(ac - bd, bc + ad)
     }
 }
-impl<T: RealImpl> Div<Self> for Complex<T> {
+impl<'a, T: RealImpl> Div<&'a Self> for Complex<T> {
     type Output = Self;
-    fn div(self, rhs: Self) -> Self::Output {
+    fn div(self, rhs: &'a Self) -> Self::Output {
         let Self { re: a, im: b } = self;
         let Self { re: c, im: d } = rhs;
         let ac = a * c;
@@ -180,6 +180,30 @@ impl<T: RealImpl> Div<Self> for Complex<T> {
         let ad = a * d;
         let bc = b * c;
         Self::new(ac + bd, bc - ad) / rhs.abs_squared()
+    }
+}
+impl<T: RealImpl> Add<Self> for Complex<T> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Add::add(self, &rhs)
+    }
+}
+impl<T: RealImpl> Sub<Self> for Complex<T> {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Sub::sub(self, &rhs)
+    }
+}
+impl<T: RealImpl> Mul<Self> for Complex<T> {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        Mul::mul(self, &rhs)
+    }
+}
+impl<T: RealImpl> Div<Self> for Complex<T> {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self::Output {
+        Div::div(self, &rhs)
     }
 }
 impl<T: RealImpl> Sum for Complex<T> {

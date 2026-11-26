@@ -18,15 +18,23 @@ pub trait BaseImpl:
 }
 pub trait Operations:
     Sized
-    + Add<Self, Output = Self>
     + AddAssign<Self>
-    + Sub<Self, Output = Self>
     + SubAssign<Self>
-    + Mul<Self, Output = Self>
     + MulAssign<Self>
-    + Div<Self, Output = Self>
     + DivAssign<Self>
     + Neg<Output = Self>
+    + Add<Self, Output = Self>
+    + Sub<Self, Output = Self>
+    + Mul<Self, Output = Self>
+    + Div<Self, Output = Self>
+    + for<'a> Add<&'a Self, Output = Self>
+    + for<'a> Sub<&'a Self, Output = Self>
+    + for<'a> Mul<&'a Self, Output = Self>
+    + for<'a> Div<&'a Self, Output = Self>
+//for<'a> &'a Self: Add<Self, Output = Self>
+//    + Sub<Self, Output = Self>
+//    + Mul<Self, Output = Self>
+//    + Div<Self, Output = Self>,
 {
 }
 impl<
@@ -39,7 +47,11 @@ impl<
         + MulAssign<Self>
         + Div<Self, Output = Self>
         + DivAssign<Self>
-        + Neg<Output = Self>,
+        + Neg<Output = Self>
+        + for<'a> Add<&'a Self, Output = Self>
+        + for<'a> Sub<&'a Self, Output = Self>
+        + for<'a> Mul<&'a Self, Output = Self>
+        + for<'a> Div<&'a Self, Output = Self>,
 > Operations for T
 {
 }
