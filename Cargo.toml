@@ -17,7 +17,7 @@ opt-level = 3
 
 [workspace]
 resolver = "3"
-members = ["cli", "lexer", "number", "openlab", "parser", "parser_macros"]
+members = ["cli", "lexer", "new_numbers", "number", "openlab", "parser", "parser_macros"]
 
 [workspace.dependencies]
 lexer = {path = "lexer"}
@@ -33,6 +33,7 @@ jzon = {version = "0.12.5", default-features = false, features = []}
 dirs = {version = "7.0.0", default-features = false, features = []}
 stacker = {version = "0.1.25", default-features = false, features = []}
 malachite = {version = "0.15.0", default-features = false, features = ["floats", "naturals_and_integers", "rationals", "std"]}
+fraction = {version = "0.17.0", default-features = false, features = []}
 
 criterion = {version = "0.8.2", default-features = false, features = []}
 
